@@ -67,8 +67,8 @@ export const INITIAL_APP_STATE: AppState = {
       },
     },
     pixCredentials: {
-      apiKey: '',
-      apiSecret: '',
+      pixKeyType: '',
+      pixKey: '',
     },
     maintenanceMode: {
       enabled: false,

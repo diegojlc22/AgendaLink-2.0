@@ -73,11 +73,13 @@ export interface BrandingSettings {
   };
 }
 
+export type PixKeyType = 'cpf' | 'celular' | 'email' | 'aleatoria' | '';
+
 export interface AppSettings {
   branding: BrandingSettings;
   pixCredentials: {
-    apiKey: string;
-    apiSecret: string;
+    pixKeyType: PixKeyType;
+    pixKey: string;
   };
   maintenanceMode: {
     enabled: boolean;

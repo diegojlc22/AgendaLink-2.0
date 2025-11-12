@@ -1,7 +1,6 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { useAppContext } from '../../App';
-import { AppState, BrandingSettings } from '../../types';
+import { AppState, BrandingSettings, PixKeyType } from '../../types';
 
 const BrandingSettingsEditor: React.FC = () => {
     const { state, setState } = useAppContext();
@@ -49,12 +48,85 @@ const BrandingSettingsEditor: React.FC = () => {
 };
 
 const PixSettingsEditor: React.FC = () => {
+    const { state, setState } = useAppContext();
+    const { pixCredentials } = state.settings;
+    
+    const [keyType, setKeyType] = useState<PixKeyType>(pixCredentials.pixKeyType || '');
+    const [keyValue, setKeyValue] = useState(pixCredentials.pixKey || '');
+
+    const handleKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let value = e.target.value;
+        if (keyType === 'cpf') {
+            value = value.replace(/\D/g, '')
+                         .replace(/(\d{3})(\d)/, '$1.$2')
+                         .replace(/(\d{3})(\d)/, '$1.$2')
+                         .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+                         .slice(0, 14);
+        } else if (keyType === 'celular') {
+            value = value.replace(/\D/g, '')
+                         .replace(/^(\d{2})(\d)/g, '($1) ')
+                         .replace(/(\d{5})(\d)/, '$1-$2')
+                         .slice(0, 15);
+        }
+        setKeyValue(value);
+    };
+
+    const handleSave = () => {
+        setState(prev => ({
+            ...prev,
+            settings: {
+                ...prev.settings,
+                pixCredentials: {
+                    pixKeyType: keyType,
+                    pixKey: keyValue,
+                }
+            }
+        }));
+        alert('Chave PIX salva com sucesso!');
+    };
+
+    const getInputProps = () => {
+        switch(keyType) {
+            case 'email': return { type: 'email', placeholder: 'seu.email@provedor.com' };
+            case 'celular': return { type: 'tel', placeholder: '(11) 99999-9999' };
+            case 'cpf': return { type: 'text', placeholder: '123.456.789-00' };
+            case 'aleatoria': return { type: 'text', placeholder: 'ex: 123e4567-e89b-12d3-a456-426614174000' };
+            default: return { type: 'text', placeholder: '' };
+        }
+    }
+
     return (
         <div className="space-y-4">
-            <h3 className="text-xl font-bold">Configuração PIX (Simulação)</h3>
-            <p className="text-sm text-gray-500">Insira credenciais falsas para fins de demonstração.</p>
-            <input placeholder="API Key" className="w-full p-2 border rounded bg-white text-gray-900" />
-            <input placeholder="API Secret" className="w-full p-2 border rounded bg-white text-gray-900" />
+            <h3 className="text-xl font-bold">Configuração PIX</h3>
+            <p className="text-sm text-gray-500">Cadastre a chave PIX que será usada para gerar os QR Codes de pagamento.</p>
+            <div>
+                <label>Tipo de Chave</label>
+                <select value={keyType} onChange={(e) => { setKeyType(e.target.value as PixKeyType); setKeyValue(''); }} className="w-full p-2 border rounded bg-white text-gray-900">
+                    <option value="">Selecione um tipo</option>
+                    <option value="cpf">CPF</option>
+                    <option value="celular">Celular</option>
+                    <option value="email">E-mail</option>
+                    <option value="aleatoria">Chave Aleatória</option>
+                </select>
+            </div>
+            {keyType && (
+                <div>
+                    <label>Chave PIX</label>
+                    <input
+                        {...getInputProps()}
+                        value={keyValue}
+                        onChange={handleKeyChange}
+                        className="w-full p-2 border rounded bg-white text-gray-900"
+                        required
+                    />
+                     {keyType === 'celular' && <p className="text-xs text-gray-400 mt-1">Insira o DDD + número. O formato `+55` será adicionado para o pagamento.</p>}
+                </div>
+            )}
+            <div className="flex justify-end">
+                <button onClick={handleSave} disabled={!keyType || !keyValue} className="btn-primary text-white font-bold py-2 px-4 rounded disabled:bg-gray-400">
+                    Salvar Chave PIX
+                </button>
+            </div>
         </div>
     );
 };

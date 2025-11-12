@@ -8,8 +8,54 @@ interface BookingCalendarProps {
   onBack: () => void;
 }
 
+const generateBRCode = (pixKey: string, amount: number, merchantName: string, merchantCity: string, txid: string = '***') => {
+    const payloadFormatIndicator = '000201';
+    
+    const merchantAccountInfo = [
+        '0014br.gov.bcb.pix',
+        `01${String(pixKey.length).padStart(2, '0')}${pixKey}`,
+    ].join('');
+    const merchantAccountInfoFull = `26${String(merchantAccountInfo.length).padStart(2, '0')}${merchantAccountInfo}`;
+
+    const merchantCategoryCode = '52040000';
+    const transactionCurrency = '5303986';
+    const transactionAmount = `54${String(amount.toFixed(2).length).padStart(2, '0')}${amount.toFixed(2)}`;
+    const countryCode = '5802BR';
+    const merchantNameField = `59${String(merchantName.length).padStart(2, '0')}${merchantName}`;
+    const merchantCityField = `60${String(merchantCity.length).padStart(2, '0')}${merchantCity}`;
+    const additionalDataField = `62070503${txid}`;
+
+    const payload = [
+        payloadFormatIndicator,
+        merchantAccountInfoFull,
+        merchantCategoryCode,
+        transactionCurrency,
+        transactionAmount,
+        countryCode,
+        merchantNameField,
+        merchantCityField,
+        additionalDataField,
+        '6304'
+    ].join('');
+
+    let crc = 0xFFFF;
+    for (let i = 0; i < payload.length; i++) {
+        crc ^= (payload.charCodeAt(i) << 8);
+        for (let j = 0; j < 8; j++) {
+            crc = (crc & 0x8000) ? (crc << 1) ^ 0x1021 : crc << 1;
+        }
+    }
+    crc &= 0xFFFF;
+
+    const crcHex = crc.toString(16).toUpperCase().padStart(4, '0');
+    return payload + crcHex;
+};
+
+
 const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) => {
   const { state, setState, currentUser } = useAppContext();
+  const { appName } = state.settings.branding;
+  const { pixKey, pixKeyType } = state.settings.pixCredentials;
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedSlot, setSelectedSlot] = useState<Date | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'Pix' | 'Local'>('Local');
@@ -104,7 +150,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
       endTime: new Date(selectedSlot.getTime() + service.duration * 60000).toISOString(),
       status: AppointmentStatus.Pending,
       paymentMethod,
-      paymentConfirmed: paymentMethod === 'Local',
+      paymentConfirmed: false, // payment is confirmed by admin for both methods
       appliedPromoId: appliedPromo?.id,
       finalPrice: finalPrice,
     };
@@ -122,12 +168,34 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
         }
     });
 
-    alert('Agendamento solicitado com sucesso!');
+    alert('Agendamento solicitado com sucesso! Aguarde a confirmação.');
     onBack();
   };
   
   const today = new Date();
   today.setHours(0,0,0,0);
+  
+  const finalPrice = service.price - discount;
+
+  const getCleanPixKey = () => {
+      if (!pixKey || !pixKeyType) return '';
+      if (pixKeyType === 'celular') {
+          return `+55${pixKey.replace(/\D/g, '')}`;
+      }
+      if (pixKeyType === 'cpf') {
+          return pixKey.replace(/\D/g, '');
+      }
+      return pixKey;
+  }
+
+  const brCode = (pixKeyType && pixKey && paymentMethod === 'Pix') 
+      ? generateBRCode(
+          getCleanPixKey(), 
+          finalPrice, 
+          appName.replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 25), 
+          'SAO PAULO'
+        )
+      : null;
 
   return (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
@@ -197,7 +265,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
 
           {discount > 0 && (
             <p className="mt-2 text-xl font-bold text-green-600">
-                Novo Total: R$ {(service.price - discount).toFixed(2)}
+                Novo Total: R$ {finalPrice.toFixed(2)}
             </p>
           )}
 
@@ -211,15 +279,42 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
 
           {paymentMethod === 'Pix' && (
               <div className="mt-4 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg text-center">
-                  <p className="font-semibold mb-2">Pague com PIX para confirmar</p>
-                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=agendalink-pix-${new Date().getTime()}`} alt="QR Code PIX" className="mx-auto" />
-                  <p className="text-xs mt-2 text-gray-500">Este é um QR code de demonstração.</p>
+                  {brCode ? (
+                      <>
+                          <p className="font-semibold mb-2">Pague com PIX para iniciar a confirmação</p>
+                          <img src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(brCode)}`} alt="QR Code PIX" className="mx-auto" />
+                          <p className="text-xs mt-2 text-gray-500">Aponte a câmera do seu celular para o QR Code.</p>
+                          <div className="mt-4">
+                              <label className="text-sm font-semibold">PIX Copia e Cola:</label>
+                              <textarea
+                                  readOnly
+                                  value={brCode}
+                                  className="w-full p-2 mt-1 text-xs bg-white dark:bg-gray-800 border rounded"
+                                  rows={3}
+                                  onClick={(e) => (e.target as HTMLTextAreaElement).select()}
+                              />
+                              <button
+                                  onClick={() => {
+                                      navigator.clipboard.writeText(brCode);
+                                      alert('Código PIX copiado!');
+                                  }}
+                                  className="mt-2 text-sm btn-secondary text-white font-bold py-1 px-3 rounded"
+                              >
+                                  Copiar Código
+                              </button>
+                          </div>
+                          <p className="text-xs mt-4 text-gray-500">Após o pagamento, seu agendamento será confirmado pelo administrador.</p>
+                      </>
+                  ) : (
+                      <p className="text-red-500 font-semibold">A chave PIX não foi configurada pelo administrador. Não é possível continuar.</p>
+                  )}
               </div>
           )}
 
           <button
             onClick={handleBooking}
-            className="w-full mt-6 btn-primary text-white font-bold py-3 px-4 rounded-lg text-lg"
+            disabled={paymentMethod === 'Pix' && !brCode}
+            className="w-full mt-6 btn-primary text-white font-bold py-3 px-4 rounded-lg text-lg disabled:bg-gray-400"
           >
             Confirmar Agendamento
           </button>

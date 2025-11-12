@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useAppContext } from '../../App';
 import { Appointment, AppointmentStatus } from '../../types';
@@ -13,6 +12,15 @@ const AppointmentManager: React.FC = () => {
             ...prev,
             appointments: prev.appointments.map(appt => 
                 appt.id === id ? { ...appt, status: newStatus } : appt
+            ),
+        }));
+    };
+
+    const handlePixConfirmation = (id: string) => {
+        setState(prev => ({
+            ...prev,
+            appointments: prev.appointments.map(appt => 
+                appt.id === id ? { ...appt, status: AppointmentStatus.Confirmed, paymentConfirmed: true } : appt
             ),
         }));
     };
@@ -51,15 +59,24 @@ const AppointmentManager: React.FC = () => {
 
                             return (
                                 <tr key={appt.id} className="border-b border-gray-200 dark:border-gray-700">
-                                    <td className="px-5 py-5 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100">{client?.name || 'Cliente Apagado'}</td>
+                                    <td className="px-5 py-5 bg-white dark:bg-gray-800 text-sm">
+                                        <p className="text-gray-900 dark:text-gray-100 whitespace-no-wrap">{client?.name || 'Cliente Apagado'}</p>
+                                        <p className="text-gray-600 dark:text-gray-400 whitespace-no-wrap text-xs">{appt.paymentMethod}</p>
+                                    </td>
                                     <td className="px-5 py-5 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100">{service?.name || 'Serviço Apagado'}</td>
                                     <td className="px-5 py-5 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100">{displayDate}</td>
                                     <td className="px-5 py-5 bg-white dark:bg-gray-800 text-sm font-semibold text-gray-900 dark:text-gray-100">{displayPrice}</td>
                                     <td className="px-5 py-5 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100">{appt.status || 'Status inválido'}</td>
                                     <td className="px-5 py-5 bg-white dark:bg-gray-800 text-sm">
-                                        {appt.status === AppointmentStatus.Pending && (
-                                            <div className="flex space-x-2">
+                                        {appt.status === AppointmentStatus.Pending && appt.paymentMethod === 'Local' && (
+                                            <div className="flex space-x-2 items-center">
                                                 <button onClick={() => handleStatusChange(appt.id, AppointmentStatus.Confirmed)} className="text-green-600 hover:text-green-900"><CheckCircleIcon className="w-6 h-6"/></button>
+                                                <button onClick={() => handleStatusChange(appt.id, AppointmentStatus.Cancelled)} className="text-red-600 hover:text-red-900"><XCircleIcon className="w-6 h-6"/></button>
+                                            </div>
+                                        )}
+                                        {appt.status === AppointmentStatus.Pending && appt.paymentMethod === 'Pix' && (
+                                            <div className="flex space-x-2 items-center">
+                                                <button onClick={() => handlePixConfirmation(appt.id)} className="text-green-800 hover:text-green-900 text-xs font-bold bg-green-200 hover:bg-green-300 p-2 rounded">Confirmar PIX</button>
                                                 <button onClick={() => handleStatusChange(appt.id, AppointmentStatus.Cancelled)} className="text-red-600 hover:text-red-900"><XCircleIcon className="w-6 h-6"/></button>
                                             </div>
                                         )}
