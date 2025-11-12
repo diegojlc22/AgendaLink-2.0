@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../../App';
-import { Service, AppointmentStatus } from '../../types';
+import { Service, AppointmentStatus, Promotion } from '../../types';
 import { ClockIcon } from '../common/Icons';
 
 interface BookingCalendarProps {
@@ -13,6 +13,10 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedSlot, setSelectedSlot] = useState<Date | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'Pix' | 'Local'>('Local');
+  const [promoCode, setPromoCode] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<Promotion | null>(null);
+  const [discount, setDiscount] = useState(0);
+  const [promoMessage, setPromoMessage] = useState({ type: '', text: '' });
 
   const timeSlots = useMemo(() => {
     const slots = [];
@@ -30,7 +34,6 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
   const isSlotAvailable = (slot: Date): boolean => {
     const slotEnd = new Date(slot.getTime() + service.duration * 60000);
     
-    // Check for past slots
     if(slot < new Date()) return false;
     
     return !state.appointments.some(appt => {
@@ -44,27 +47,80 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
     });
   };
 
+  const handleApplyPromo = () => {
+    setPromoMessage({ type: '', text: '' });
+    setDiscount(0);
+    setAppliedPromo(null);
+
+    const promo = state.promotions.find(p => p.promoCode?.toLowerCase() === promoCode.toLowerCase());
+    
+    if (!promo) {
+        setPromoMessage({ type: 'error', text: 'Código inválido.' });
+        return;
+    }
+    if (!promo.isActive) {
+        setPromoMessage({ type: 'error', text: 'Esta promoção não está ativa.' });
+        return;
+    }
+    const now = new Date();
+    if (now < new Date(promo.startDate) || now > new Date(promo.endDate)) {
+        setPromoMessage({ type: 'error', text: 'Promoção fora do período de validade.' });
+        return;
+    }
+    if (promo.usageLimit && promo.uses >= promo.usageLimit) {
+        setPromoMessage({ type: 'error', text: 'Limite de usos da promoção atingido.' });
+        return;
+    }
+    if (!promo.serviceIds.includes(service.id)) {
+        setPromoMessage({ type: 'error', text: 'Este código não é válido para o serviço selecionado.' });
+        return;
+    }
+
+    let calculatedDiscount = 0;
+    if (promo.type === 'percentage') {
+        calculatedDiscount = service.price * (promo.value / 100);
+    } else { // fixed
+        calculatedDiscount = promo.value;
+    }
+    
+    setDiscount(calculatedDiscount);
+    setAppliedPromo(promo);
+    setPromoMessage({ type: 'success', text: `Desconto de R$ ${calculatedDiscount.toFixed(2)} aplicado!` });
+  };
+
   const handleBooking = () => {
     if (!selectedSlot || !currentUser) {
         alert("Erro: Usuário não encontrado.");
         return;
     };
+    
+    const finalPrice = service.price - discount;
 
     const newAppointment = {
       id: new Date().toISOString(),
       serviceId: service.id,
-      clientId: currentUser.id, // Use logged-in user's ID
+      clientId: currentUser.id,
       startTime: selectedSlot.toISOString(),
       endTime: new Date(selectedSlot.getTime() + service.duration * 60000).toISOString(),
       status: AppointmentStatus.Pending,
       paymentMethod,
-      paymentConfirmed: paymentMethod === 'Local', // Auto-confirm local payments for demo
+      paymentConfirmed: paymentMethod === 'Local',
+      appliedPromoId: appliedPromo?.id,
+      finalPrice: finalPrice,
     };
 
-    setState(prev => ({
-      ...prev,
-      appointments: [...prev.appointments, newAppointment],
-    }));
+    setState(prev => {
+        const newAppointments = [...prev.appointments, newAppointment];
+        const newPromotions = appliedPromo ? prev.promotions.map(p => 
+            p.id === appliedPromo.id ? { ...p, uses: p.uses + 1 } : p
+        ) : prev.promotions;
+
+        return {
+          ...prev,
+          appointments: newAppointments,
+          promotions: newPromotions,
+        }
+    });
 
     alert('Agendamento solicitado com sucesso!');
     onBack();
@@ -123,6 +179,27 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
             Você está agendando <span className="font-semibold text-primary">{service.name}</span> para o dia <span className="font-semibold">{selectedDate.toLocaleDateString()}</span> às <span className="font-semibold">{selectedSlot.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>.
           </p>
           <p className="mt-2 text-lg font-bold">Total: R$ {service.price.toFixed(2)}</p>
+
+          <div className="mt-4">
+              <label htmlFor="promo-code" className="block text-sm font-medium">Código Promocional</label>
+              <div className="flex gap-2 mt-1">
+                  <input
+                      type="text"
+                      id="promo-code"
+                      value={promoCode}
+                      onChange={e => setPromoCode(e.target.value)}
+                      className="flex-grow p-2 border rounded-md dark:bg-gray-700"
+                  />
+                  <button onClick={handleApplyPromo} className="btn-secondary text-white font-bold py-2 px-4 rounded-lg">Aplicar</button>
+              </div>
+              {promoMessage.text && <p className={`text-sm mt-2 ${promoMessage.type === 'error' ? 'text-red-500' : 'text-green-600'}`}>{promoMessage.text}</p>}
+          </div>
+
+          {discount > 0 && (
+            <p className="mt-2 text-xl font-bold text-green-600">
+                Novo Total: R$ {(service.price - discount).toFixed(2)}
+            </p>
+          )}
 
           <div className="mt-4">
               <h4 className="font-semibold mb-2">Forma de Pagamento</h4>

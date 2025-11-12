@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { CalendarIcon, CogIcon, DashboardIcon, TagIcon, UsersIcon } from '../common/Icons';
+import { CalendarIcon, CogIcon, DashboardIcon, TagIcon, UsersIcon, PercentageIcon } from '../common/Icons';
 import Dashboard from './Dashboard';
 import AppointmentManager from './AppointmentManager';
 import ServiceManager from './ServiceManager';
 import ClientManager from './ClientManager';
 import SettingsManager from './SettingsManager';
 import { useAppContext } from '../../App';
+import PromotionManager from './PromotionManager';
 
-type AdminSection = 'dashboard' | 'appointments' | 'services' | 'clients' | 'settings';
+type AdminSection = 'dashboard' | 'appointments' | 'services' | 'clients' | 'promotions' | 'settings';
 
 const AdminView: React.FC = () => {
     const [activeSection, setActiveSection] = useState<AdminSection>('dashboard');
@@ -19,6 +20,7 @@ const AdminView: React.FC = () => {
             case 'appointments': return <AppointmentManager />;
             case 'services': return <ServiceManager />;
             case 'clients': return <ClientManager />;
+            case 'promotions': return <PromotionManager />;
             case 'settings': return <SettingsManager />;
             default: return <Dashboard />;
         }
@@ -46,6 +48,7 @@ const AdminView: React.FC = () => {
                     <NavItem section="dashboard" label="Dashboard" icon={<DashboardIcon className="h-6 w-6" />} />
                     <NavItem section="appointments" label="Agendamentos" icon={<CalendarIcon className="h-6 w-6" />} />
                     <NavItem section="services" label="Serviços" icon={<TagIcon className="h-6 w-6" />} />
+                    <NavItem section="promotions" label="Promoções" icon={<PercentageIcon className="h-6 w-6" />} />
                     <NavItem section="clients" label="Clientes" icon={<UsersIcon className="h-6 w-6" />} />
                     <NavItem section="settings" label="Configurações" icon={<CogIcon className="h-6 w-6" />} />
                 </nav>

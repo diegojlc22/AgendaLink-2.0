@@ -24,16 +24,30 @@ export const DEFAULT_CLIENTS: Client[] = [
 ];
 
 export const DEFAULT_APPOINTMENTS: Appointment[] = [
-  { id: '1', serviceId: '1', clientId: '1', startTime: createDate(today, 14, 0), endTime: createDate(today, 15, 0), status: AppointmentStatus.Confirmed, paymentMethod: 'Local', paymentConfirmed: true },
-  { id: '2', serviceId: '2', clientId: '2', startTime: createDate(tomorrow, 10, 0), endTime: createDate(tomorrow, 10, 45), status: AppointmentStatus.Pending, paymentMethod: 'Pix', paymentConfirmed: false },
-  { id: '3', serviceId: '3', clientId: '1', startTime: createDate(tomorrow, 11, 0), endTime: createDate(tomorrow, 11, 30), status: AppointmentStatus.Pending, paymentMethod: 'Local', paymentConfirmed: false },
+  { id: '1', serviceId: '1', clientId: '1', startTime: createDate(today, 14, 0), endTime: createDate(today, 15, 0), status: AppointmentStatus.Confirmed, paymentMethod: 'Local', paymentConfirmed: true, finalPrice: 80 },
+  { id: '2', serviceId: '2', clientId: '2', startTime: createDate(tomorrow, 10, 0), endTime: createDate(tomorrow, 10, 45), status: AppointmentStatus.Pending, paymentMethod: 'Pix', paymentConfirmed: false, finalPrice: 30 },
+  { id: '3', serviceId: '3', clientId: '1', startTime: createDate(tomorrow, 11, 0), endTime: createDate(tomorrow, 11, 30), status: AppointmentStatus.Pending, paymentMethod: 'Local', paymentConfirmed: false, finalPrice: 40 },
 ];
 
+const promoStartDate = new Date();
 const promoEndDate = new Date();
 promoEndDate.setDate(promoEndDate.getDate() + 7);
 
 export const DEFAULT_PROMOTIONS: Promotion[] = [
-    { id: '1', title: 'Semana da Beleza', description: '20% de desconto em todos os serviços de cabelo!', serviceIds: ['1', '5'], discountPercentage: 20, limitType: 'time', limitValue: promoEndDate.toISOString(), createdAt: new Date().toISOString() }
+    { 
+        id: '1', 
+        title: 'Semana da Beleza', 
+        description: '20% de desconto em todos os serviços de cabelo!', 
+        serviceIds: ['1', '5'], 
+        promoCode: 'BELEZA20',
+        type: 'percentage',
+        value: 20,
+        startDate: promoStartDate.toISOString(),
+        endDate: promoEndDate.toISOString(),
+        usageLimit: 100,
+        uses: 12,
+        isActive: true,
+    }
 ];
 
 export const INITIAL_APP_STATE: AppState = {

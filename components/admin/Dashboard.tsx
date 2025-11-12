@@ -18,11 +18,8 @@ const Dashboard: React.FC = () => {
     const totalRevenue = useMemo(() => 
         appointments
             .filter(a => a.status === AppointmentStatus.Completed)
-            .reduce((sum, a) => {
-                const service = services.find(s => s.id === a.serviceId);
-                return sum + (service?.price || 0);
-            }, 0)
-    , [appointments, services]);
+            .reduce((sum, a) => sum + a.finalPrice, 0)
+    , [appointments]);
 
     const pendingAppointments = useMemo(() => 
         appointments.filter(a => a.status === AppointmentStatus.Pending).length
@@ -49,15 +46,12 @@ const Dashboard: React.FC = () => {
             if (a.status === AppointmentStatus.Completed) {
                 const date = new Date(a.startTime);
                 const monthKey = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
-                const service = services.find(s => s.id === a.serviceId);
-                if(service) {
-                    data[monthKey] = (data[monthKey] || 0) + service.price;
-                }
+                data[monthKey] = (data[monthKey] || 0) + a.finalPrice;
             }
         });
         return Object.entries(data).map(([name, revenue]) => ({ name, revenue }));
 
-    }, [appointments, services]);
+    }, [appointments]);
 
 
     const PIE_COLORS = ['#6366f1', '#ec4899', '#fbbf24', '#22c55e', '#3b82f6'];

@@ -25,6 +25,8 @@ export interface Appointment {
   paymentMethod: 'Pix' | 'Local';
   paymentConfirmed: boolean;
   notes?: string;
+  appliedPromoId?: string;
+  finalPrice: number;
 }
 
 export interface Client {
@@ -41,12 +43,17 @@ export interface Promotion {
   id: string;
   title: string;
   description: string;
+  promoCode?: string;
+  type: 'percentage' | 'fixed';
+  value: number; // The discount value
   serviceIds: string[];
-  discountPercentage: number;
-  limitType: 'time' | 'quantity';
-  limitValue: string | number; // ISO string for time, number for quantity
-  createdAt: string; // ISO string
+  startDate: string; // ISO string
+  endDate: string; // ISO string
+  usageLimit?: number; // Optional total usage limit
+  uses: number; // How many times it has been used
+  isActive: boolean;
 }
+
 
 export interface PixTransaction {
   id: string;

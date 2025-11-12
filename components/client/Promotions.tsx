@@ -67,15 +67,16 @@ const PromotionCard: React.FC<{ promotion: Promotion }> = ({ promotion }) => {
           {applicableServices.map(s => <li key={s.id}>{s.name}</li>)}
         </ul>
       </div>
-      {promotion.limitType === 'time' && (
+      {/* FIX: Replaced non-existent 'limitType' and 'limitValue' with properties from the Promotion type. */}
+      {promotion.endDate && (
         <div className="mt-6 flex items-center space-x-3">
             <ClockIcon className="h-8 w-8 text-secondary"/>
-            <CountdownTimer expiry={promotion.limitValue as string} />
+            <CountdownTimer expiry={promotion.endDate} />
         </div>
       )}
-       {promotion.limitType === 'quantity' && (
+       {typeof promotion.usageLimit === 'number' && (
         <div className="mt-6">
-            <p><span className="font-bold">{promotion.limitValue}</span> agendamentos restantes!</p>
+            <p><span className="font-bold">{promotion.usageLimit - promotion.uses}</span> agendamentos restantes!</p>
         </div>
       )}
     </div>

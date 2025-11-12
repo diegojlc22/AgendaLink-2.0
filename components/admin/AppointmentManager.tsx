@@ -29,6 +29,7 @@ const AppointmentManager: React.FC = () => {
                             <th className="px-5 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Cliente</th>
                             <th className="px-5 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Serviço</th>
                             <th className="px-5 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Data & Hora</th>
+                            <th className="px-5 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Valor Final</th>
                             <th className="px-5 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Status</th>
                             <th className="px-5 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">Ações</th>
                         </tr>
@@ -42,6 +43,7 @@ const AppointmentManager: React.FC = () => {
                                     <td className="px-5 py-5 bg-white dark:bg-gray-800 text-sm">{client?.name}</td>
                                     <td className="px-5 py-5 bg-white dark:bg-gray-800 text-sm">{service?.name}</td>
                                     <td className="px-5 py-5 bg-white dark:bg-gray-800 text-sm">{new Date(appt.startTime).toLocaleString()}</td>
+                                    <td className="px-5 py-5 bg-white dark:bg-gray-800 text-sm font-semibold">R$ {appt.finalPrice.toFixed(2)}</td>
                                     <td className="px-5 py-5 bg-white dark:bg-gray-800 text-sm">{appt.status}</td>
                                     <td className="px-5 py-5 bg-white dark:bg-gray-800 text-sm">
                                         {appt.status === AppointmentStatus.Pending && (

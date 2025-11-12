@@ -26,6 +26,7 @@ const AppointmentHistoryItem: React.FC<{ appointment: Appointment }> = ({ appoin
             <div>
                 <p className="font-bold text-lg text-gray-800 dark:text-white">{service?.name || 'Serviço não encontrado'}</p>
                 <p className="text-sm text-gray-500">{new Date(appointment.startTime).toLocaleString()}</p>
+                 <p className="text-sm font-semibold text-primary">Valor: R$ {appointment.finalPrice.toFixed(2)}</p>
             </div>
             {getStatusChip(appointment.status)}
         </div>

@@ -81,7 +81,7 @@ const ClientManager: React.FC = () => {
                                     const service = state.services.find(s => s.id === appt.serviceId);
                                     return (
                                         <li key={appt.id} className="p-2 bg-gray-100 dark:bg-gray-700 rounded">
-                                            {service?.name} em {new Date(appt.startTime).toLocaleDateString()} - <span className="font-semibold">{appt.status}</span>
+                                            {service?.name} em {new Date(appt.startTime).toLocaleDateString()} - <span className="font-semibold">{appt.status}</span> (R$ {appt.finalPrice.toFixed(2)})
                                         </li>
                                     )
                                 }) : <p className="text-sm text-gray-500">Nenhum agendamento encontrado.</p>}
