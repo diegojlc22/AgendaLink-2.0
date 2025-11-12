@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useAppContext } from '../../App';
 import { AppState, BrandingSettings, PixKeyType } from '../../types';
 import { DownloadIcon, UploadIcon, TrashIcon } from '../common/Icons';
+import { INITIAL_APP_STATE } from '../../constants';
+import { saveStateToDB } from '../../services/database';
 
 const BrandingSettingsEditor: React.FC = () => {
     const { state, setState } = useAppContext();
@@ -194,7 +196,23 @@ const DataManagement: React.FC = () => {
 
     const handleClearData = async () => {
         if (window.confirm('ATENÇÃO: Esta ação é irreversível e irá apagar TODOS os dados do aplicativo (agendamentos, clientes, configurações, etc.) guardados neste navegador. Deseja continuar?')) {
-            localStorage.removeItem('agendaLinkState');
+            const adminUser = INITIAL_APP_STATE.clients.find(c => c.role === 'admin');
+
+            if (!adminUser) {
+                alert('Erro: Usuário administrador padrão não encontrado. A operação foi cancelada.');
+                return;
+            }
+            
+            const resetState: AppState = {
+                services: [],
+                appointments: [],
+                clients: [adminUser],
+                promotions: [],
+                pixTransactions: [],
+                settings: INITIAL_APP_STATE.settings,
+            };
+
+            saveStateToDB(resetState);
             localStorage.removeItem('agendaLinkCurrentUser');
 
             if ('serviceWorker' in navigator && window.caches) {
