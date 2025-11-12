@@ -70,6 +70,8 @@ const PixSettingsEditor: React.FC = () => {
     
     const [keyType, setKeyType] = useState<PixKeyType>(pixCredentials.pixKeyType || '');
     const [keyValue, setKeyValue] = useState(pixCredentials.pixKey || '');
+    const [expirationTime, setExpirationTime] = useState(pixCredentials.pixExpirationTime || 60);
+
 
     const handleKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         let value = e.target.value;
@@ -96,10 +98,11 @@ const PixSettingsEditor: React.FC = () => {
                 pixCredentials: {
                     pixKeyType: keyType,
                     pixKey: keyValue,
+                    pixExpirationTime: expirationTime,
                 }
             }
         }));
-        alert('Chave PIX salva com sucesso!');
+        alert('Configurações PIX salvas com sucesso!');
     };
 
     const getInputProps = () => {
@@ -115,7 +118,7 @@ const PixSettingsEditor: React.FC = () => {
     return (
         <div className="space-y-4">
             <h3 className="text-xl font-bold">Configuração PIX</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Cadastre a chave PIX que será usada para gerar os QR Codes de pagamento.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Cadastre a chave PIX e o tempo de expiração do QR Code para pagamentos.</p>
             <div>
                 <label className="font-medium text-sm">Tipo de Chave</label>
                 <select value={keyType} onChange={(e) => { setKeyType(e.target.value as PixKeyType); setKeyValue(''); }} className="w-full p-2 mt-1 border rounded-lg bg-white text-gray-900 dark:bg-gray-700 dark:text-white">
@@ -139,9 +142,20 @@ const PixSettingsEditor: React.FC = () => {
                      {keyType === 'celular' && <p className="text-xs text-gray-400 mt-1">Insira o DDD + número. O formato `+55` será adicionado para o pagamento.</p>}
                 </div>
             )}
+            <div>
+                <label className="font-medium text-sm">Tempo de Expiração do PIX (segundos)</label>
+                <input
+                    type="number"
+                    value={expirationTime}
+                    onChange={e => setExpirationTime(parseInt(e.target.value, 10) || 0)}
+                    className="w-full p-2 mt-1 border rounded-lg bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
+                    placeholder="60"
+                />
+                <p className="text-xs text-gray-400 mt-1">Tempo em segundos que o cliente terá para pagar o QR Code. Padrão: 60.</p>
+            </div>
             <div className="flex justify-end">
                 <button onClick={handleSave} disabled={!keyType || !keyValue} className="btn-primary text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-400">
-                    Salvar Chave PIX
+                    Salvar Configurações PIX
                 </button>
             </div>
         </div>

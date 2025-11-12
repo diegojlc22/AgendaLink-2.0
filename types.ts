@@ -81,6 +81,7 @@ export interface AppSettings {
   pixCredentials: {
     pixKeyType: PixKeyType;
     pixKey: string;
+    pixExpirationTime: number;
   };
   maintenanceMode: {
     enabled: boolean;

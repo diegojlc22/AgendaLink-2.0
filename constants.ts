@@ -70,6 +70,7 @@ export const INITIAL_APP_STATE: AppState = {
     pixCredentials: {
       pixKeyType: '',
       pixKey: '',
+      pixExpirationTime: 60,
     },
     maintenanceMode: {
       enabled: false,

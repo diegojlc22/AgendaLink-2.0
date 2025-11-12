@@ -2,43 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '../../App';
 import { Service, AppointmentStatus, Promotion, Appointment } from '../../types';
 import { ClockIcon, CheckCircleIcon } from '../common/Icons';
-import { generateBRCode } from '../../utils/pix';
-
-// --- SIMULAÇÃO DE API BACKEND ---
-// Esta função agora usa a chave PIX real das configurações do app.
-const generateDynamicPix = (amount: number, pixKey: string): Promise<{ qrCodeUrl: string; copyPaste: string; transactionId: string }> => {
-  console.log(`[API MOCK] Gerando PIX dinâmico para R$ ${amount.toFixed(2)} com a chave: ${pixKey}`);
-  return new Promise((resolve, reject) => {
-    // Validação para garantir que a chave PIX foi fornecida.
-    if (!pixKey || pixKey.trim() === '') {
-        return reject(new Error("Chave PIX não configurada."));
-    }
-    setTimeout(() => {
-      const transactionId = `TXID_${Date.now()}`;
-      // Usa a chave PIX real fornecida pelas configurações
-      const copyPasteCode = generateBRCode(pixKey, amount, 'AgendaLink', 'SAO PAULO', transactionId);
-      
-      const response = {
-        qrCodeUrl: `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(copyPasteCode)}`,
-        copyPaste: copyPasteCode,
-        transactionId: transactionId,
-      };
-      console.log('[API MOCK] PIX Gerado:', response);
-      resolve(response);
-    }, 1500); // Simula a latência da rede
-  });
-};
-
-// Simula o backend recebendo uma notificação de pagamento via webhook
-const listenForPaymentConfirmation = (transactionId: string, callback: () => void) => {
-    console.log(`[API MOCK] Ouvindo confirmação para a transação: ${transactionId}`);
-    const timeout = setTimeout(() => {
-        console.log(`[API MOCK] Pagamento confirmado para ${transactionId}!`);
-        callback();
-    }, 8000); // Simula o tempo que o cliente leva para pagar
-
-    return () => clearTimeout(timeout); // Função para limpar o listener
-};
+import { createPixCharge, checkPixPaymentStatus } from '../../services/pixAPI';
 
 
 interface BookingCalendarProps {
@@ -46,11 +10,11 @@ interface BookingCalendarProps {
   onBack: () => void;
 }
 
-type PixStatus = 'idle' | 'loading' | 'generated' | 'paid';
+type PixStatus = 'idle' | 'loading' | 'generated' | 'paid' | 'error';
 
 const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) => {
   const { state, setState, currentUser } = useAppContext();
-  const { pixKey } = state.settings.pixCredentials; // Pega a chave PIX real das configurações
+  const { pixKey, pixExpirationTime } = state.settings.pixCredentials;
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedSlot, setSelectedSlot] = useState<Date | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'Pix' | 'Local'>('Local');
@@ -58,59 +22,70 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
   const [appliedPromo, setAppliedPromo] = useState<Promotion | null>(null);
   const [discount, setDiscount] = useState(0);
   const [promoMessage, setPromoMessage] = useState({ type: '', text: '' });
-  const [newAppointment, setNewAppointment] = useState<Appointment | null>(null);
+  const [bookingAttempt, setBookingAttempt] = useState(false);
   
-  // Estados para o fluxo de PIX
   const [pixStatus, setPixStatus] = useState<PixStatus>('idle');
   const [pixDetails, setPixDetails] = useState<{ qrCodeUrl: string; copyPaste: string; transactionId: string } | null>(null);
+  const [isPixExpired, setIsPixExpired] = useState(false);
+  const [countdown, setCountdown] = useState(pixExpirationTime);
+  const [pendingAppointment, setPendingAppointment] = useState<Appointment | null>(null);
 
   const finalPrice = service.price - discount;
-
+  
+  // Efeito para o cronômetro de expiração do PIX
   useEffect(() => {
-    // Inicia a geração do PIX quando o método é selecionado
-    const generatePix = async () => {
-        if (paymentMethod === 'Pix' && pixStatus === 'idle' && finalPrice > 0) {
-            setPixStatus('loading');
-            try {
-                // Passa a chave PIX das configurações para a função de geração
-                const details = await generateDynamicPix(finalPrice, pixKey);
-                setPixDetails(details);
-                setPixStatus('generated');
-            } catch (error) {
-                console.error("Falha ao gerar PIX:", error);
-                setPixStatus('idle'); // Volta ao estado inicial em caso de erro
-                alert("Não foi possível gerar o PIX. O administrador precisa configurar uma chave PIX nas configurações do painel.");
-                setPaymentMethod('Local'); // Retorna para o método de pagamento local
-            }
-        }
-    };
-    generatePix();
-  }, [paymentMethod, pixStatus, finalPrice, pixKey]); // Adicionadas dependências corretas
+    if (pixStatus === 'generated' && !isPixExpired) {
+      const timerId = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(timerId);
+            setIsPixExpired(true);
+            setPendingAppointment(null); // Invalida o agendamento pendente
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
 
+      return () => clearInterval(timerId);
+    }
+  }, [pixStatus, isPixExpired]);
+  
+  // Efeito para verificar (polling) a confirmação de pagamento
   useEffect(() => {
-      if (pixStatus === 'generated' && pixDetails?.transactionId && newAppointment) {
-          const unsubscribe = listenForPaymentConfirmation(pixDetails.transactionId, () => {
-              setState(prev => ({
-                  ...prev,
-                  appointments: prev.appointments.map(appt =>
-                      appt.id === newAppointment.id
-                          ? { ...appt, status: AppointmentStatus.Confirmed, paymentConfirmed: true }
-                          : appt
-                  ),
-              }));
-              setPixStatus('paid');
-          });
-          return unsubscribe; // Limpa o listener se o componente for desmontado
+      if (pixStatus === 'generated' && pixDetails?.transactionId && pendingAppointment && !isPixExpired) {
+          const pollingInterval = setInterval(async () => {
+              try {
+                  const status = await checkPixPaymentStatus(pixDetails.transactionId);
+                  if (status === 'paid') {
+                      setState(prev => ({
+                          ...prev,
+                          appointments: prev.appointments.map(appt =>
+                              appt.id === pendingAppointment.id
+                                  ? { ...appt, status: AppointmentStatus.Confirmed, paymentConfirmed: true }
+                                  : appt
+                          ),
+                      }));
+                      setPixStatus('paid');
+                      clearInterval(pollingInterval);
+                  }
+              } catch (error) {
+                  console.error("Erro ao verificar status do PIX:", error);
+                  // O polling continua mesmo em caso de erro de rede
+              }
+          }, 3000); // Verifica a cada 3 segundos
+
+          return () => clearInterval(pollingInterval);
       }
-  }, [pixStatus, pixDetails, newAppointment, setState]);
+  }, [pixStatus, pixDetails, pendingAppointment, isPixExpired, setState]);
 
 
   const timeSlots = useMemo(() => {
     const slots = [];
     const dayStart = new Date(selectedDate);
-    dayStart.setHours(9, 0, 0, 0); // Salon opens at 9:00
+    dayStart.setHours(9, 0, 0, 0);
     const dayEnd = new Date(selectedDate);
-    dayEnd.setHours(18, 0, 0, 0); // Salon closes at 18:00
+    dayEnd.setHours(18, 0, 0, 0);
 
     for (let time = dayStart; time < dayEnd; time.setMinutes(time.getMinutes() + 30)) {
       slots.push(new Date(time));
@@ -120,9 +95,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
 
   const isSlotAvailable = (slot: Date): boolean => {
     const slotEnd = new Date(slot.getTime() + service.duration * 60000);
-    
     if(slot < new Date()) return false;
-    
     return !state.appointments.some(appt => {
       const apptStart = new Date(appt.startTime);
       const apptEnd = new Date(appt.endTime);
@@ -140,96 +113,116 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
     setAppliedPromo(null);
 
     const promo = state.promotions.find(p => p.promoCode?.toLowerCase() === promoCode.toLowerCase());
-    
-    if (!promo) {
-        setPromoMessage({ type: 'error', text: 'Código inválido.' });
-        return;
-    }
-    if (!promo.isActive) {
-        setPromoMessage({ type: 'error', text: 'Esta promoção não está ativa.' });
-        return;
-    }
-    const now = new Date();
-    if (now < new Date(promo.startDate) || now > new Date(promo.endDate)) {
-        setPromoMessage({ type: 'error', text: 'Promoção fora do período de validade.' });
-        return;
-    }
-    if (promo.usageLimit && promo.uses >= promo.usageLimit) {
-        setPromoMessage({ type: 'error', text: 'Limite de usos da promoção atingido.' });
-        return;
-    }
-    if (!promo.serviceIds.includes(service.id)) {
-        setPromoMessage({ type: 'error', text: 'Este código não é válido para o serviço selecionado.' });
+    if (!promo || !promo.isActive || new Date() < new Date(promo.startDate) || new Date() > new Date(promo.endDate) || (promo.usageLimit && promo.uses >= promo.usageLimit) || !promo.serviceIds.includes(service.id)) {
+        setPromoMessage({ type: 'error', text: 'Código promocional inválido ou expirado.' });
         return;
     }
 
-    let calculatedDiscount = 0;
-    if (promo.type === 'percentage') {
-        calculatedDiscount = service.price * (promo.value / 100);
-    } else { // fixed
-        calculatedDiscount = promo.value;
-    }
-    
+    let calculatedDiscount = promo.type === 'percentage' ? service.price * (promo.value / 100) : promo.value;
     setDiscount(calculatedDiscount);
     setAppliedPromo(promo);
     setPromoMessage({ type: 'success', text: `Desconto de R$ ${calculatedDiscount.toFixed(2)} aplicado!` });
   };
+  
+  const initiatePixPayment = async () => {
+    if (finalPrice <= 0) {
+        alert("O pagamento com PIX não é necessário para valores zerados.");
+        return;
+    }
+    if (!currentUser || !selectedSlot) {
+        alert("Erro: Dados do agendamento incompletos.");
+        return;
+    }
+
+    setPixStatus('loading');
+    setIsPixExpired(false);
+    setCountdown(pixExpirationTime);
+
+    try {
+        // 1. Cria o agendamento com status Pendente
+        const appointmentData: Appointment = {
+          id: `appt_${Date.now()}`,
+          serviceId: service.id,
+          clientId: currentUser.id,
+          startTime: selectedSlot.toISOString(),
+          endTime: new Date(selectedSlot.getTime() + service.duration * 60000).toISOString(),
+          status: AppointmentStatus.Pending,
+          paymentMethod: 'Pix',
+          paymentConfirmed: false,
+          appliedPromoId: appliedPromo?.id,
+          finalPrice: finalPrice,
+        };
+        
+        setPendingAppointment(appointmentData); // Armazena o agendamento que aguarda pagamento
+
+        setState(prev => {
+            const newAppointments = [...prev.appointments, appointmentData];
+            const newPromotions = appliedPromo ? prev.promotions.map(p => 
+                p.id === appliedPromo.id ? { ...p, uses: p.uses + 1 } : p
+            ) : prev.promotions;
+            return { ...prev, appointments: newAppointments, promotions: newPromotions };
+        });
+
+        // 2. Chama a API (simulada) para gerar a cobrança PIX
+        const details = await createPixCharge({
+            amount: finalPrice,
+            pixKey: pixKey,
+            clientName: currentUser.name,
+            serviceName: service.name,
+            appointmentId: appointmentData.id
+        });
+        
+        setPixDetails(details);
+        setPixStatus('generated'); // Transição final para exibir o QR Code
+
+    } catch (error) {
+        console.error("Falha ao gerar PIX:", error);
+        setPixStatus('error');
+        // Reverte o agendamento se a geração do PIX falhar
+        if (pendingAppointment) {
+            setState(prev => ({
+                ...prev,
+                appointments: prev.appointments.filter(a => a.id !== pendingAppointment.id)
+            }));
+        }
+        alert("Não foi possível gerar o PIX. Verifique a configuração e tente novamente.");
+    }
+  };
+
 
   const handleBooking = () => {
     if (!selectedSlot || !currentUser) {
-        alert("Erro: Usuário não encontrado.");
+        alert("Erro: Horário ou usuário inválido.");
         return;
-    };
+    }
     
-    const calculatedFinalPrice = service.price - discount;
+    setBookingAttempt(true); // Bloqueia a interface de seleção
 
-    const appointmentData: Appointment = {
-      id: new Date().toISOString(),
-      serviceId: service.id,
-      clientId: currentUser.id,
-      startTime: selectedSlot.toISOString(),
-      endTime: new Date(selectedSlot.getTime() + service.duration * 60000).toISOString(),
-      status: paymentMethod === 'Pix' ? AppointmentStatus.Pending : AppointmentStatus.Confirmed,
-      paymentMethod,
-      paymentConfirmed: false,
-      appliedPromoId: appliedPromo?.id,
-      finalPrice: calculatedFinalPrice,
-    };
-    
-    setNewAppointment(appointmentData);
-
-    setState(prev => {
-        const newAppointments = [...prev.appointments, appointmentData];
-        const newPromotions = appliedPromo ? prev.promotions.map(p => 
-            p.id === appliedPromo.id ? { ...p, uses: p.uses + 1 } : p
-        ) : prev.promotions;
-
-        return {
-          ...prev,
-          appointments: newAppointments,
-          promotions: newPromotions,
-        }
-    });
-    
-    // Se não for PIX, o fluxo termina aqui.
-    if (paymentMethod !== 'Pix') {
+    if (paymentMethod === 'Local') {
+        const appointmentData: Appointment = {
+          id: new Date().toISOString(),
+          serviceId: service.id,
+          clientId: currentUser.id,
+          startTime: selectedSlot.toISOString(),
+          endTime: new Date(selectedSlot.getTime() + service.duration * 60000).toISOString(),
+          status: AppointmentStatus.Confirmed,
+          paymentMethod,
+          paymentConfirmed: true, // Pagamento no local já é "confirmado"
+          appliedPromoId: appliedPromo?.id,
+          finalPrice: finalPrice,
+        };
+        setState(prev => ({ ...prev, appointments: [...prev.appointments, appointmentData] }));
         alert('Agendamento confirmado com sucesso!');
         onBack();
+    } else { // PIX
+        initiatePixPayment();
     }
   };
   
   const today = new Date();
   today.setHours(0,0,0,0);
   
-  const handlePaymentMethodChange = (method: 'Pix' | 'Local') => {
-    setPaymentMethod(method);
-    // Reseta o estado do PIX se o usuário trocar de método
-    setPixStatus('idle');
-    setPixDetails(null);
-    setNewAppointment(null);
-  };
-  
-  if (pixStatus === 'paid' && newAppointment) {
+  if (pixStatus === 'paid' && pendingAppointment) {
       return (
           <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-2xl text-center animate-fade-in-up">
               <CheckCircleIcon className="w-24 h-24 mx-auto text-green-500" />
@@ -245,14 +238,14 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
   return (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl">
       <div className="flex justify-between items-center mb-6">
-        <button onClick={onBack} className="text-primary hover:underline disabled:text-gray-400" disabled={!!newAppointment}>
+        <button onClick={onBack} className="text-primary hover:underline disabled:text-gray-400" disabled={bookingAttempt}>
           &larr; Voltar
         </button>
         <h2 className="text-2xl font-bold text-center">{service.name}</h2>
         <div/>
       </div>
 
-      <div className={newAppointment ? 'opacity-50 pointer-events-none' : ''}>
+      <div className={bookingAttempt ? 'opacity-50 pointer-events-none' : ''}>
           <div className="mb-6">
               <label htmlFor="date-picker" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Selecione uma data:</label>
               <input
@@ -287,11 +280,11 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
           </div>
       </div>
 
-      {selectedSlot && !newAppointment && (
+      {selectedSlot && !bookingAttempt && (
         <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
           <h3 className="text-xl font-bold">Confirmar Agendamento</h3>
           <p className="mt-2 text-gray-600 dark:text-gray-300">
-            Você está agendando <span className="font-semibold text-primary">{service.name}</span> para o dia <span className="font-semibold">{selectedDate.toLocaleDateString()}</span> às <span className="font-semibold">{selectedSlot.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>.
+            Você está agendando <span className="font-semibold text-primary">{service.name}</span> para <span className="font-semibold">{selectedDate.toLocaleDateString()}</span> às <span className="font-semibold">{selectedSlot.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>.
           </p>
           <p className="mt-2 text-lg font-bold">Total: R$ {service.price.toFixed(2)}</p>
 
@@ -310,73 +303,61 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
               {promoMessage.text && <p className={`text-sm mt-2 ${promoMessage.type === 'error' ? 'text-red-500' : 'text-green-600'}`}>{promoMessage.text}</p>}
           </div>
 
-          {discount > 0 && (
-            <p className="mt-2 text-xl font-bold text-green-600">
-                Novo Total: R$ {finalPrice.toFixed(2)}
-            </p>
-          )}
+          {discount > 0 && <p className="mt-2 text-xl font-bold text-green-600">Novo Total: R$ {finalPrice.toFixed(2)}</p>}
 
           <div className="mt-4">
               <h4 className="font-semibold mb-2">Forma de Pagamento</h4>
               <div className="flex gap-4">
-                  <button onClick={() => handlePaymentMethodChange('Local')} className={`p-3 rounded-lg border-2 transition-colors ${paymentMethod === 'Local' ? 'border-primary ring-2 ring-primary/50' : 'border-gray-300 dark:border-gray-600'}`}>Pagar no Local</button>
+                  <button onClick={() => setPaymentMethod('Local')} className={`p-3 rounded-lg border-2 transition-colors ${paymentMethod === 'Local' ? 'border-primary ring-2 ring-primary/50' : 'border-gray-300 dark:border-gray-600'}`}>Pagar no Local</button>
                   <button 
-                    onClick={() => handlePaymentMethodChange('Pix')} 
+                    onClick={() => setPaymentMethod('Pix')} 
                     disabled={!pixKey}
                     title={!pixKey ? "O pagamento com PIX não foi configurado pelo administrador." : "Pagar com PIX Online"}
-                    className={`p-3 rounded-lg border-2 transition-colors ${
-                        paymentMethod === 'Pix' ? 'border-primary ring-2 ring-primary/50' : 'border-gray-300 dark:border-gray-600'
-                    } disabled:bg-gray-100 dark:disabled:bg-gray-900/50 disabled:cursor-not-allowed disabled:text-gray-400 dark:disabled:text-gray-500 disabled:border-gray-300 dark:disabled:border-gray-600`}
+                    className={`p-3 rounded-lg border-2 transition-colors ${paymentMethod === 'Pix' ? 'border-primary ring-2 ring-primary/50' : 'border-gray-300 dark:border-gray-600'} disabled:bg-gray-100 dark:disabled:bg-gray-900/50 disabled:cursor-not-allowed disabled:text-gray-400 dark:disabled:text-gray-500`}
                 >
                     PIX Online
                 </button>
               </div>
           </div>
           
-          <button
-            onClick={handleBooking}
-            className="w-full mt-6 btn-primary text-white font-bold py-3 px-4 rounded-lg text-lg disabled:bg-gray-400"
-          >
+          <button onClick={handleBooking} className="w-full mt-6 btn-primary text-white font-bold py-3 px-4 rounded-lg text-lg disabled:bg-gray-400">
             {paymentMethod === 'Pix' ? 'Agendar e Pagar com PIX' : 'Confirmar Agendamento'}
           </button>
         </div>
       )}
       
-      {newAppointment && paymentMethod === 'Pix' && (
+      {bookingAttempt && paymentMethod === 'Pix' && (
           <div className="mt-4 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg text-center border-t-4 border-primary">
               {pixStatus === 'loading' && (
-                  <div className="flex flex-col items-center justify-center h-48">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-                      <p className="mt-4 font-semibold text-gray-600 dark:text-gray-300">Gerando PIX seguro...</p>
-                  </div>
+                  <div className="flex flex-col items-center justify-center h-48"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div><p className="mt-4 font-semibold text-gray-600 dark:text-gray-300">Gerando PIX seguro...</p></div>
               )}
               {pixStatus === 'generated' && pixDetails && (
                   <>
                       <p className="font-semibold mb-2">Pague com PIX para confirmar</p>
-                      <img src={pixDetails.qrCodeUrl} alt="QR Code PIX" className="mx-auto rounded-lg" />
+                      <div className="relative inline-block">
+                        <img src={pixDetails.qrCodeUrl} alt="QR Code PIX" className={`mx-auto rounded-lg transition-opacity duration-300 ${isPixExpired ? 'opacity-20' : ''}`} />
+                        {isPixExpired && (
+                           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 rounded-lg">
+                                <p className="text-white font-bold text-xl">Expirado</p>
+                                <button onClick={initiatePixPayment} className="mt-2 text-sm btn-secondary text-white font-bold py-1 px-3 rounded-lg">Gerar Novo PIX</button>
+                           </div>
+                        )}
+                      </div>
                        <div className="mt-4 p-3 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 rounded-lg text-sm font-semibold">
-                          Aguardando pagamento...
+                          {isPixExpired ? 'Seu código PIX expirou.' : `Aguardando pagamento... Expira em ${Math.floor(countdown / 60)}:${(countdown % 60).toString().padStart(2, '0')}`}
                       </div>
                       <div className="mt-4">
                           <label className="text-sm font-semibold">PIX Copia e Cola:</label>
-                          <textarea
-                              readOnly
-                              value={pixDetails.copyPaste}
-                              className="w-full p-2 mt-1 text-xs bg-white dark:bg-gray-800 border rounded-lg"
-                              rows={3}
-                              onClick={(e) => (e.target as HTMLTextAreaElement).select()}
-                          />
-                          <button
-                              onClick={() => {
-                                  navigator.clipboard.writeText(pixDetails.copyPaste);
-                                  alert('Código PIX copiado!');
-                              }}
-                              className="mt-2 text-sm btn-secondary text-white font-bold py-1 px-3 rounded-lg"
-                          >
-                              Copiar Código
-                          </button>
+                          <textarea readOnly value={pixDetails.copyPaste} className="w-full p-2 mt-1 text-xs bg-white dark:bg-gray-800 border rounded-lg" rows={3} onClick={(e) => (e.target as HTMLTextAreaElement).select()}/>
+                          <button onClick={() => { navigator.clipboard.writeText(pixDetails.copyPaste); alert('Código PIX copiado!'); }} className="mt-2 text-sm btn-secondary text-white font-bold py-1 px-3 rounded-lg">Copiar Código</button>
                       </div>
                   </>
+              )}
+              {pixStatus === 'error' && (
+                  <div className="flex flex-col items-center justify-center h-48 text-red-500">
+                      <p className="font-semibold">Ocorreu um erro ao gerar o PIX.</p>
+                      <button onClick={initiatePixPayment} className="mt-4 text-sm btn-primary text-white font-bold py-2 px-4 rounded-lg">Tentar Novamente</button>
+                  </div>
               )}
           </div>
       )}
