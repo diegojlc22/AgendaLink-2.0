@@ -212,7 +212,7 @@ const DataManagement: React.FC = () => {
                 pixTransactions: [],
             };
 
-            saveStateToDB(resetState); // Overwrite database with clean state
+            await saveStateToDB(resetState); // Overwrite database with clean state
             localStorage.removeItem('agendaLinkCurrentUser');
 
             if ('serviceWorker' in navigator && window.caches) {
