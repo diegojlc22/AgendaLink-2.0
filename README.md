@@ -10,7 +10,7 @@
 
 O AgendaLink 2.0 é uma aplicação web completa, projetada para profissionais da beleza que buscam otimizar a gestão de seus negócios. A plataforma oferece um painel administrativo robusto e uma interface de agendamento inteligente e intuitiva para clientes.
 
-Totalmente transformado em um **Progressive Web App**, o AgendaLink 2.0 combina a acessibilidade da web com a experiência de um aplicativo nativo, funcionando perfeitamente em celulares, tablets e desktops.
+Totalmente transformado em um **Progressive Web App**, o AgendaLink 2.0 combina a acessibilidade da web com a experiência de um aplicativo nativo, funcionando perfeitamente em celulares, tablets e desktops, com dados salvos em um **banco de dados SQLite local** para uma experiência offline superior.
 
 ---
 
@@ -41,7 +41,7 @@ O AgendaLink 2.0 é repleto de funcionalidades para atender tanto o administrado
 Leve seu negócio para o próximo nível com funcionalidades de aplicativos nativos:
 
 - **Instalável:** Adicione o AgendaLink à tela inicial do seu celular ou desktop com um único clique.
-- **Funciona Offline com Cache Inteligente:** O aplicativo carrega instantaneamente usando a estratégia de cache "stale-while-revalidate". Um **indicador visual** informa ao usuário quando a conexão é perdida, garantindo uma experiência contínua.
+- **Funciona Offline com Banco de Dados Real:** O aplicativo carrega instantaneamente e funciona offline de forma robusta, salvando todos os dados em um banco de dados **SQLite** no navegador. Um **indicador visual** informa ao usuário quando a conexão é perdida.
 - **Sincronização em Tempo Real entre Abas:** Abra o aplicativo em várias abas e veja as alterações refletidas instantaneamente em todas elas, sem precisar recarregar a página.
 - **Notificações Push:** Envie lembretes de agendamento e promoções diretamente para os dispositivos dos seus clientes (requer backend).
 - **Atalhos Rápidos:** Acesse seções como "Agendar" e "Minha Conta" diretamente do ícone do app.
@@ -54,6 +54,7 @@ Leve seu negócio para o próximo nível com funcionalidades de aplicativos nati
 
 - **React:** Para uma interface de usuário reativa e moderna.
 - **TypeScript:** Para um código mais seguro e manutenível.
+- **SQLite (via sql.js):** Para um banco de dados robusto e confiável que funciona 100% offline no navegador, substituindo o `localStorage`.
 - **Tailwind CSS:** Para estilização rápida e responsiva.
 - **Recharts:** Para a criação de gráficos interativos no dashboard.
 - **Service Workers:** Para habilitar o cache, o funcionamento offline e as notificações.
@@ -77,7 +78,7 @@ Siga os passos abaixo:
     cd caminho/para/a/pasta/do-projeto
     ```
 
-3.  **Inicie o Servidor de Desenvolvimento:**
+3.  **Inicie o Servidor de Desenvolvimento (Método Rápido):**
     Execute o seguinte comando no terminal. Ele irá baixar e rodar um servidor de desenvolvimento moderno (Vite) para você, sem precisar instalar nada permanentemente.
 
     ```bash
@@ -89,13 +90,36 @@ Siga os passos abaixo:
 
     `http://localhost:5173`
 
-    Pronto! O sistema estará rodando na sua máquina e será atualizado automaticamente sempre que você salvar uma alteração nos arquivos.
+    Pronto! O sistema estará rodando na sua máquina.
+
+### Se o Comando Acima Falhar (Método Alternativo e mais Robusto)
+
+Às vezes, o comando `npx` pode falhar por problemas de cache ou permissão. Se isso acontecer, siga estes passos para uma instalação local mais garantida:
+
+1.  **Inicialize um projeto Node.js:**
+    Ainda no terminal, dentro da pasta do projeto, execute:
+    ```bash
+    npm init -y
+    ```
+    Isso criará um arquivo `package.json`.
+
+2.  **Instale o Vite localmente:**
+    Este comando vai criar uma pasta `node_modules` e instalar o Vite dentro dela, especificamente para este projeto.
+    ```bash
+    npm install vite
+    ```
+
+3.  **Rode o Vite Novamente:**
+    Agora, o mesmo comando de antes funcionará, pois ele encontrará o Vite que acabamos de instalar.
+    ```bash
+    npx vite
+    ```
 
 ---
 
 ## 🚀 Como Usar
 
-A aplicação simula um ambiente completo sem a necessidade de um backend. Todos os dados são salvos localmente no seu navegador (`localStorage`).
+A aplicação simula um ambiente completo sem a necessidade de um backend. Todos os dados são salvos em um banco de dados SQLite local no seu navegador, garantindo que tudo funcione offline.
 
 ### Visão do Cliente
 - **Login:** Use as credenciais `cliente@agendalink.com` / `123`.
