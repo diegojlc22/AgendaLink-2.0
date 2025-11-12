@@ -6,6 +6,7 @@ import ClientView from './components/client/ClientView';
 import AdminView from './components/admin/AdminView';
 import AuthPage from './components/auth/AuthPage';
 import PWAInstallPrompt from './components/common/PWAInstallPrompt';
+import { WifiOffIcon } from './components/common/Icons';
 
 type AppContextType = {
   state: AppState;
@@ -27,6 +28,7 @@ interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
 }
 
+const channel = new BroadcastChannel('agenda-link-state-sync');
 
 const AppContext = createContext<AppContextType | null>(null);
 
@@ -65,6 +67,14 @@ const MaintenanceMode: React.FC<{ message: string }> = ({ message }) => (
         </div>
     </div>
 );
+
+const SyncStatusIndicator: React.FC = () => (
+    <div className="fixed top-0 left-0 right-0 bg-yellow-500 text-white text-center p-2 z-[100] flex items-center justify-center text-sm shadow-lg">
+        <WifiOffIcon className="h-5 w-5 mr-2" />
+        Você está offline. Suas alterações estão sendo salvas localmente.
+    </div>
+);
+
 
 export default function App() {
   const [state, setState] = useState<AppState>(() => {
@@ -110,6 +120,38 @@ export default function App() {
   
   const [isAdminView, setIsAdminView] = useState(currentUser?.role === 'admin');
   const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  // Effect for online/offline status
+  useEffect(() => {
+    const goOnline = () => setIsOnline(true);
+    const goOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+
+    return () => {
+        window.removeEventListener('online', goOnline);
+        window.removeEventListener('offline', goOffline);
+    };
+  }, []);
+
+  // Effect for multi-tab state sync via BroadcastChannel
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+        const receivedState = JSON.parse(event.data);
+        // Stringify is a cheap way to do a deep compare for this app's state size
+        // This prevents an infinite loop of updates between tabs
+        if (JSON.stringify(state) !== JSON.stringify(receivedState)) {
+             setState(receivedState);
+        }
+    };
+    channel.addEventListener('message', handleMessage);
+
+    return () => {
+        channel.removeEventListener('message', handleMessage);
+    };
+  }, [state]); // Re-subscribe if state setter changes to avoid stale closures
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (event: Event) => {
@@ -124,8 +166,11 @@ export default function App() {
     };
   }, []);
   
+  // Effect to save state to localStorage AND broadcast it
   useEffect(() => {
-    localStorage.setItem('agendaLinkState', JSON.stringify(state));
+    const stateString = JSON.stringify(state);
+    localStorage.setItem('agendaLinkState', stateString);
+    channel.postMessage(stateString); // Broadcast state change to other tabs
     applyBranding(state.settings.branding);
   }, [state]);
 
@@ -186,7 +231,7 @@ export default function App() {
     setState(prev => ({ ...prev, clients: [...prev.clients, newUser] }));
     setCurrentUser(newUser);
     setIsAdminView(false);
-  }, [state.clients]);
+  }, [state.clients, setState]);
 
   const resetPassword = useCallback((email: string) => {
       const userIndex = state.clients.findIndex(c => c.email.toLowerCase() === email.toLowerCase());
@@ -200,10 +245,10 @@ export default function App() {
           return { ...prev, clients: newClients };
       });
       return newPassword;
-  }, [state.clients]);
+  }, [state.clients, setState]);
 
 
-  const contextValue = useMemo(() => ({ state, setState, currentUser, login, logout, register, resetPassword }), [state, currentUser, login, logout, register, resetPassword]);
+  const contextValue = useMemo(() => ({ state, setState, currentUser, login, logout, register, resetPassword }), [state, currentUser, login, logout, register, resetPassword, setState]);
 
   if (!currentUser) {
       return (
@@ -220,7 +265,10 @@ export default function App() {
   return (
     <AppContext.Provider value={contextValue}>
       <div className="min-h-screen font-sans text-gray-800 dark:text-gray-200">
-        {isAdminView ? <AdminView /> : <ClientView />}
+        {!isOnline && <SyncStatusIndicator />}
+        <div className={!isOnline ? 'pt-10' : ''}>
+            {isAdminView ? <AdminView /> : <ClientView />}
+        </div>
         {currentUser.role === 'admin' && <ViewToggleButton isAdminView={isAdminView} setIsAdminView={setIsAdminView} />}
         {installPromptEvent && !isAdminView && <PWAInstallPrompt onInstall={handleInstallClick} />}
       </div>
