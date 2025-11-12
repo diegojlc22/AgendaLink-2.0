@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../../App';
 import { Service, AppointmentStatus } from '../../types';
@@ -10,7 +9,7 @@ interface BookingCalendarProps {
 }
 
 const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) => {
-  const { state, setState } = useAppContext();
+  const { state, setState, currentUser } = useAppContext();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedSlot, setSelectedSlot] = useState<Date | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'Pix' | 'Local'>('Local');
@@ -46,12 +45,15 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
   };
 
   const handleBooking = () => {
-    if (!selectedSlot) return;
+    if (!selectedSlot || !currentUser) {
+        alert("Erro: Usuário não encontrado.");
+        return;
+    };
 
     const newAppointment = {
       id: new Date().toISOString(),
       serviceId: service.id,
-      clientId: '1', // Mock client ID
+      clientId: currentUser.id, // Use logged-in user's ID
       startTime: selectedSlot.toISOString(),
       endTime: new Date(selectedSlot.getTime() + service.duration * 60000).toISOString(),
       status: AppointmentStatus.Pending,

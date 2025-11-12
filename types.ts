@@ -1,4 +1,3 @@
-
 export interface Service {
   id: string;
   name: string;
@@ -34,6 +33,8 @@ export interface Client {
   email: string;
   phone: string;
   notes?: string;
+  password?: string;
+  role: 'client' | 'admin';
 }
 
 export interface Promotion {

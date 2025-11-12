@@ -1,4 +1,3 @@
-
 import { AppState, Service, Client, Appointment, AppointmentStatus, Promotion } from './types';
 
 const today = new Date();
@@ -20,8 +19,8 @@ export const DEFAULT_SERVICES: Service[] = [
 ];
 
 export const DEFAULT_CLIENTS: Client[] = [
-  { id: '1', name: 'Ana Silva', email: 'ana.silva@example.com', phone: '11987654321' },
-  { id: '2', name: 'Carlos Pereira', email: 'carlos.pereira@example.com', phone: '21912345678' },
+  { id: '1', name: 'Ana Silva (Cliente)', email: 'cliente@agendalink.com', phone: '11987654321', password: '123', role: 'client' },
+  { id: '2', name: 'Carlos Pereira (Admin)', email: 'admin@agendalink.com', phone: '21912345678', password: 'admin', role: 'admin' },
 ];
 
 export const DEFAULT_APPOINTMENTS: Appointment[] = [

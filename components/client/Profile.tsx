@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useAppContext } from '../../App';
 import { AppointmentStatus, Appointment } from '../../types';
@@ -34,13 +33,23 @@ const AppointmentHistoryItem: React.FC<{ appointment: Appointment }> = ({ appoin
 }
 
 const Profile: React.FC = () => {
-    const { state } = useAppContext();
-    const client = state.clients[0]; // Mock current user
+    const { state, logout, currentUser } = useAppContext();
+
+    if (!currentUser) {
+        return <div>Usuário não encontrado. Por favor, faça login novamente.</div>;
+    }
+
+    const client = currentUser;
     const clientAppointments = state.appointments.filter(a => a.clientId === client.id);
 
   return (
     <div>
-      <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-6">Meu Perfil</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white">Meu Perfil</h2>
+        <button onClick={logout} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg">
+            Sair
+        </button>
+      </div>
       
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8">
         <h3 className="text-xl font-bold mb-4">Informações Pessoais</h3>

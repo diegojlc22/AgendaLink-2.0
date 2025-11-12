@@ -1,13 +1,16 @@
-
 import React, { useState, createContext, useContext, useEffect, useMemo } from 'react';
-import { AppState, BrandingSettings } from './types';
+import { AppState, BrandingSettings, Client } from './types';
 import { INITIAL_APP_STATE } from './constants';
 import ClientView from './components/client/ClientView';
 import AdminView from './components/admin/AdminView';
+import Login from './components/auth/Login';
 
 type AppContextType = {
   state: AppState;
   setState: React.Dispatch<React.SetStateAction<AppState>>;
+  currentUser: Client | null;
+  login: (email: string, password: string) => void;
+  logout: () => void;
 };
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -59,12 +62,29 @@ export default function App() {
     }
   });
 
-  const [isAdminView, setIsAdminView] = useState(false);
+  const [currentUser, setCurrentUser] = useState<Client | null>(() => {
+    try {
+        const savedUser = localStorage.getItem('agendaLinkCurrentUser');
+        return savedUser ? JSON.parse(savedUser) : null;
+    } catch (error) {
+        return null;
+    }
+  });
+  
+  const [isAdminView, setIsAdminView] = useState(currentUser?.role === 'admin');
   
   useEffect(() => {
     localStorage.setItem('agendaLinkState', JSON.stringify(state));
     applyBranding(state.settings.branding);
   }, [state]);
+
+  useEffect(() => {
+    if (currentUser) {
+        localStorage.setItem('agendaLinkCurrentUser', JSON.stringify(currentUser));
+    } else {
+        localStorage.removeItem('agendaLinkCurrentUser');
+    }
+  }, [currentUser]);
   
   const applyBranding = (branding: BrandingSettings) => {
     document.title = branding.appName;
@@ -74,9 +94,31 @@ export default function App() {
     root.style.setProperty('--color-accent', hexToRgb(branding.colors.accent));
   };
   
-  const contextValue = useMemo(() => ({ state, setState }), [state]);
+  const login = (email: string, password: string) => {
+    const user = state.clients.find(c => c.email === email && c.password === password);
+    if (user) {
+        setCurrentUser(user);
+        setIsAdminView(user.role === 'admin');
+    } else {
+        throw new Error('Email ou senha inválidos.');
+    }
+  };
 
-  if (state.settings.maintenanceMode.enabled && !isAdminView) {
+  const logout = () => {
+    setCurrentUser(null);
+  };
+
+  const contextValue = useMemo(() => ({ state, setState, currentUser, login, logout }), [state, currentUser]);
+
+  if (!currentUser) {
+      return (
+        <AppContext.Provider value={contextValue}>
+            <Login />
+        </AppContext.Provider>
+      );
+  }
+
+  if (state.settings.maintenanceMode.enabled && currentUser.role !== 'admin') {
       return <MaintenanceMode message={state.settings.maintenanceMode.message} />;
   }
 
@@ -84,7 +126,7 @@ export default function App() {
     <AppContext.Provider value={contextValue}>
       <div className="min-h-screen font-sans text-gray-800 dark:text-gray-200">
         {isAdminView ? <AdminView /> : <ClientView />}
-        <ViewToggleButton isAdminView={isAdminView} setIsAdminView={setIsAdminView} />
+        {currentUser.role === 'admin' && <ViewToggleButton isAdminView={isAdminView} setIsAdminView={setIsAdminView} />}
       </div>
     </AppContext.Provider>
   );

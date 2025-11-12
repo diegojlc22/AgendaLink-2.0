@@ -12,15 +12,14 @@ const ServiceForm: React.FC<{ service?: Service; onSave: (service: Service) => v
         isFeatured: service?.isFeatured || false,
     });
 
+    // FIX: Destructuring properties from e.target can prevent TypeScript's type narrowing from working correctly.
+    // By using a variable for e.target and accessing its properties directly, we ensure type guards are effective.
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        
-        // FIX: Use `e.target` directly for type checks to allow TypeScript to narrow the type correctly.
-        // Destructuring `type` breaks control flow analysis for type narrowing on `e.target`.
-        if (e.target instanceof HTMLInputElement && e.target.type === 'checkbox') {
-            setFormData(prev => ({ ...prev, [name]: e.target.checked }));
+        const target = e.target;
+        if (target instanceof HTMLInputElement && target.type === 'checkbox') {
+            setFormData(prev => ({ ...prev, [target.name]: target.checked }));
         } else {
-            setFormData(prev => ({ ...prev, [name]: e.target.type === 'number' ? parseFloat(value) : value }));
+            setFormData(prev => ({ ...prev, [target.name]: target.type === 'number' ? parseFloat(target.value) : target.value }));
         }
     };
     

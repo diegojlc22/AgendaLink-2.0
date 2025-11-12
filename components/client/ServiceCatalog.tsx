@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../../App';
 import { Service } from '../../types';
@@ -54,21 +53,31 @@ const ServiceCatalog: React.FC = () => {
   return (
     <div>
       <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-6">Nossos Serviços</h2>
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <input
-          type="text"
-          placeholder="Buscar serviço..."
-          value={searchQuery}
-          onChange={e => setSearchQuery(e.target.value)}
-          className="flex-grow p-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 ring-primary"
-        />
-        <select
-          value={selectedCategory}
-          onChange={e => setSelectedCategory(e.target.value)}
-          className="p-3 border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 ring-primary"
-        >
-          {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-        </select>
+       <div className="mb-6">
+        <div className="flex items-center border border-gray-300 dark:border-gray-600 rounded-lg p-1 space-x-1 bg-white dark:bg-gray-800">
+          <input
+            type="text"
+            placeholder="Buscar serviço..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="flex-grow p-2 bg-transparent border-none focus:ring-0 dark:text-white"
+          />
+          <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-md">
+            {categories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  selectedCategory === cat
+                    ? 'bg-primary text-white shadow'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
         {filteredServices.map(service => (
