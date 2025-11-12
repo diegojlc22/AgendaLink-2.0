@@ -35,7 +35,7 @@ export interface Client {
   email: string;
   phone: string;
   notes?: string;
-  password?: string;
+  password: string;
   role: 'client' | 'admin';
 }
 

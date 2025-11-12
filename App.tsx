@@ -1,9 +1,9 @@
-import React, { useState, createContext, useContext, useEffect, useMemo } from 'react';
+import React, { useState, createContext, useContext, useEffect, useMemo, useCallback } from 'react';
 import { AppState, BrandingSettings, Client } from './types';
 import { INITIAL_APP_STATE } from './constants';
 import ClientView from './components/client/ClientView';
 import AdminView from './components/admin/AdminView';
-import Login from './components/auth/Login';
+import AuthPage from './components/auth/AuthPage';
 
 type AppContextType = {
   state: AppState;
@@ -11,6 +11,8 @@ type AppContextType = {
   currentUser: Client | null;
   login: (email: string, password: string) => void;
   logout: () => void;
+  register: (newUser: Omit<Client, 'id'>) => void;
+  resetPassword: (email: string) => string;
 };
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -94,26 +96,55 @@ export default function App() {
     root.style.setProperty('--color-accent', hexToRgb(branding.colors.accent));
   };
   
-  const login = (email: string, password: string) => {
-    const user = state.clients.find(c => c.email === email && c.password === password);
+  const login = useCallback((email: string, password: string) => {
+    const user = state.clients.find(c => c.email.toLowerCase() === email.toLowerCase() && c.password === password);
     if (user) {
         setCurrentUser(user);
         setIsAdminView(user.role === 'admin');
     } else {
         throw new Error('Email ou senha inválidos.');
     }
-  };
+  }, [state.clients]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setCurrentUser(null);
-  };
+  }, []);
 
-  const contextValue = useMemo(() => ({ state, setState, currentUser, login, logout }), [state, currentUser]);
+  const register = useCallback((newUserData: Omit<Client, 'id'>) => {
+    const emailExists = state.clients.some(c => c.email.toLowerCase() === newUserData.email.toLowerCase());
+    if (emailExists) {
+        throw new Error('Este e-mail já está em uso.');
+    }
+    const newUser: Client = {
+        id: new Date().toISOString(),
+        ...newUserData
+    };
+    setState(prev => ({ ...prev, clients: [...prev.clients, newUser] }));
+    setCurrentUser(newUser);
+    setIsAdminView(false);
+  }, [state.clients]);
+
+  const resetPassword = useCallback((email: string) => {
+      const userIndex = state.clients.findIndex(c => c.email.toLowerCase() === email.toLowerCase());
+      if (userIndex === -1) {
+          throw new Error('E-mail não encontrado.');
+      }
+      const newPassword = Math.random().toString(36).slice(-8);
+      setState(prev => {
+          const newClients = [...prev.clients];
+          newClients[userIndex] = { ...newClients[userIndex], password: newPassword };
+          return { ...prev, clients: newClients };
+      });
+      return newPassword;
+  }, [state.clients]);
+
+
+  const contextValue = useMemo(() => ({ state, setState, currentUser, login, logout, register, resetPassword }), [state, currentUser, login, logout, register, resetPassword]);
 
   if (!currentUser) {
       return (
         <AppContext.Provider value={contextValue}>
-            <Login />
+            <AuthPage />
         </AppContext.Provider>
       );
   }

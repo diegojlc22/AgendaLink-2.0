@@ -1,7 +1,12 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../../App';
 
-const Login: React.FC = () => {
+interface LoginProps {
+  onSwitchToRegister: () => void;
+  onSwitchToForgotPassword: () => void;
+}
+
+const Login: React.FC<LoginProps> = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
   const { login, state } = useAppContext();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -46,12 +51,21 @@ const Login: React.FC = () => {
             />
           </div>
           <div>
-            <label
-              htmlFor="password"
-              className="text-sm font-medium text-gray-700 dark:text-gray-300"
-            >
-              Senha
-            </label>
+             <div className="flex items-center justify-between">
+                <label
+                    htmlFor="password"
+                    className="text-sm font-medium text-gray-700 dark:text-gray-300"
+                >
+                    Senha
+                </label>
+                <button
+                    type="button"
+                    onClick={onSwitchToForgotPassword}
+                    className="text-xs text-primary hover:underline"
+                >
+                    Esqueceu a senha?
+                </button>
+            </div>
             <input
               id="password"
               name="password"
@@ -73,10 +87,15 @@ const Login: React.FC = () => {
             </button>
           </div>
         </form>
-         <div className="text-xs text-center text-gray-500 dark:text-gray-400 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <p className="font-bold">Credenciais de Teste:</p>
-            <p>Admin: admin@agendalink.com / admin</p>
-            <p>Cliente: cliente@agendalink.com / 123</p>
+         <div className="text-sm text-center text-gray-500 dark:text-gray-400 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <p>Não tem uma conta?{' '}
+                <button
+                    onClick={onSwitchToRegister}
+                    className="font-medium text-primary hover:underline"
+                >
+                    Cadastre-se
+                </button>
+            </p>
         </div>
       </div>
     </div>
