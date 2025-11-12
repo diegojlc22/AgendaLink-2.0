@@ -66,6 +66,7 @@ export interface PixTransaction {
 export interface BrandingSettings {
   appName: string;
   logoUrl: string;
+  logoEnabled: boolean;
   colors: {
     primary: string; // hex
     secondary: string; // hex

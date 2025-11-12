@@ -26,7 +26,7 @@ const Login: React.FC<LoginProps> = ({ onSwitchToRegister, onSwitchToForgotPassw
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-purple-100 via-pink-50 to-white dark:from-gray-900 dark:via-purple-900 dark:to-gray-800">
       <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-xl shadow-2xl dark:bg-gray-800">
         <div className="text-center">
-          <img src={state.settings.branding.logoUrl} alt="Logo" className="w-16 h-16 mx-auto" />
+          {state.settings.branding.logoEnabled && state.settings.branding.logoUrl && <img src={state.settings.branding.logoUrl} alt="Logo" className="w-16 h-16 mx-auto" />}
           <h1 className="mt-4 text-3xl font-bold text-gray-900 dark:text-white">
             {state.settings.branding.appName}
           </h1>

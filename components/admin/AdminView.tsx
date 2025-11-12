@@ -44,7 +44,7 @@ const AdminView: React.FC = () => {
         <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
             <aside className="w-64 bg-gray-800 text-white shadow-2xl flex-shrink-0 flex flex-col">
                 <div className="p-5 border-b border-gray-700 flex items-center space-x-2">
-                    <img src={state.settings.branding.logoUrl} alt="Logo" className="h-8 w-8"/>
+                    {state.settings.branding.logoEnabled && state.settings.branding.logoUrl && <img src={state.settings.branding.logoUrl} alt="Logo" className="h-8 w-8"/>}
                     <h1 className="text-xl font-bold">Admin Panel</h1>
                 </div>
                 <nav className="mt-6 flex-grow px-4">

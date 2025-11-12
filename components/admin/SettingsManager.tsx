@@ -25,9 +25,25 @@ const BrandingSettingsEditor: React.FC = () => {
                 <label className="font-medium text-sm">Nome do App</label>
                 <input value={branding.appName} onChange={(e) => handleBrandingChange('appName', e.target.value)} className="w-full p-2 mt-1 border rounded-lg bg-white text-gray-900 dark:bg-gray-700 dark:text-white" />
             </div>
+             <div className="flex items-center space-x-3 pt-2">
+                <input 
+                    type="checkbox" 
+                    id="logoEnabled" 
+                    name="logoEnabled"
+                    checked={branding.logoEnabled} 
+                    onChange={(e) => handleBrandingChange('logoEnabled', e.target.checked)}
+                    className="rounded text-primary focus:ring-primary h-4 w-4"
+                />
+                <label htmlFor="logoEnabled" className="font-medium text-sm">Ativar Logo</label>
+            </div>
             <div>
                 <label className="font-medium text-sm">URL do Logo</label>
-                <input value={branding.logoUrl} onChange={(e) => handleBrandingChange('logoUrl', e.target.value)} className="w-full p-2 mt-1 border rounded-lg bg-white text-gray-900 dark:bg-gray-700 dark:text-white" />
+                <input 
+                    value={branding.logoUrl} 
+                    onChange={(e) => handleBrandingChange('logoUrl', e.target.value)} 
+                    className="w-full p-2 mt-1 border rounded-lg bg-white text-gray-900 dark:bg-gray-700 dark:text-white disabled:bg-gray-200 dark:disabled:bg-gray-600"
+                    disabled={!branding.logoEnabled}
+                />
             </div>
             <div className="flex gap-4">
                 <div>
