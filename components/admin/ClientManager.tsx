@@ -22,15 +22,26 @@ const ClientManager: React.FC = () => {
     };
 
     const handleResetPassword = (clientId: string) => {
-        if (!window.confirm(`Tem certeza que deseja resetar a senha do cliente ${selectedClient?.name}?`)) {
+        const clientToUpdate = state.clients.find(c => c.id === clientId);
+        if (!clientToUpdate) return;
+
+        if (!window.confirm(`Tem certeza que deseja resetar a senha do cliente ${clientToUpdate.name}?`)) {
             return;
         }
+        
         const newPassword = generateRandomPassword();
+        const updatedClient = { ...clientToUpdate, password: newPassword };
+
+        // Update the main state
         setState(prev => ({
             ...prev,
-            clients: prev.clients.map(c => c.id === clientId ? { ...c, password: newPassword } : c),
+            clients: prev.clients.map(c => (c.id === clientId ? updatedClient : c)),
         }));
-        alert(`Senha resetada com sucesso!\n\nNova senha para ${selectedClient?.name}: ${newPassword}\n\nPor favor, informe ao cliente.`);
+
+        // BUG FIX: Update the local state to keep the UI in sync
+        setSelectedClient(updatedClient);
+
+        alert(`Senha resetada com sucesso!\n\nNova senha para ${updatedClient.name}: ${newPassword}\n\nPor favor, informe ao cliente.`);
     };
 
     const clientAppointments = selectedClient ? state.appointments.filter(a => a.clientId === selectedClient.id) : [];
