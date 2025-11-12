@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '../../App';
 import { Service, AppointmentStatus, Promotion, Appointment } from '../../types';
@@ -14,7 +15,7 @@ type PixStatus = 'idle' | 'loading' | 'generated' | 'paid' | 'error';
 
 const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) => {
   const { state, setState, currentUser } = useAppContext();
-  const { pixKey, pixExpirationTime = 60 } = state.settings.pixCredentials;
+  const { pixKey, pixExpirationTime } = state.settings.pixCredentials;
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedSlot, setSelectedSlot] = useState<Date | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'Pix' | 'Local'>('Local');
@@ -27,7 +28,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
   const [pixStatus, setPixStatus] = useState<PixStatus>('idle');
   const [pixDetails, setPixDetails] = useState<{ qrCodeUrl: string; copyPaste: string; } | null>(null);
   const [isPixExpired, setIsPixExpired] = useState(false);
-  const [countdown, setCountdown] = useState(pixExpirationTime);
+  const [countdown, setCountdown] = useState(pixExpirationTime || 60);
   const [pendingAppointmentId, setPendingAppointmentId] = useState<string | null>(null);
 
 
@@ -35,8 +36,10 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
   
   // Efeito para o cronômetro de expiração do PIX
   useEffect(() => {
+    // FIX: Changed NodeJS.Timeout to a browser-compatible type for setInterval.
+    let timerId: ReturnType<typeof setInterval>;
     if (pixStatus === 'generated' && !isPixExpired) {
-      const timerId = setInterval(() => {
+      timerId = setInterval(() => {
         setCountdown(prev => {
           if (prev <= 1) {
             clearInterval(timerId);
@@ -47,9 +50,8 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
           return prev - 1;
         });
       }, 1000);
-
-      return () => clearInterval(timerId);
     }
+    return () => clearInterval(timerId);
   }, [pixStatus, isPixExpired]);
 
 
@@ -100,14 +102,17 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
   const initiatePixPayment = () => {
     if (!currentUser || !selectedSlot) return;
 
+    // Garante que o tempo de expiração é um número válido
+    const validExpirationTime = (typeof pixExpirationTime === 'number' && pixExpirationTime > 0) ? pixExpirationTime : 60;
+
     setPixStatus('loading');
     setIsPixExpired(false);
-    setCountdown(pixExpirationTime || 60);
+    setCountdown(validExpirationTime);
     setPixDetails(null);
 
     // 1. Cria um agendamento pendente
     const newAppointment: Appointment = {
-      id: `appt_${Date.now()}`,
+      id: `appt${Date.now()}`, // FIX: Removido '_' para TXID válido
       serviceId: service.id,
       clientId: currentUser.id,
       startTime: selectedSlot.toISOString(),
@@ -131,34 +136,48 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
 
     // 2. Gera o PIX localmente após um breve delay
     setTimeout(() => {
-        const brCode = generateBRCode(
-            pixKey,
-            finalPrice,
-            state.settings.branding.appName.substring(0, 25),
-            "SAO PAULO",
-            `TXID${newAppointment.id}`
-        );
-        
-        const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(brCode)}`;
-        
-        setPixDetails({ qrCodeUrl, copyPaste: brCode });
-        setPixStatus('generated');
+        try {
+            const brCode = generateBRCode(
+                pixKey,
+                finalPrice,
+                state.settings.branding.appName,
+                "SAO PAULO",
+                `TXID${newAppointment.id}`
+            );
+            
+            const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(brCode)}`;
+            
+            setPixDetails({ qrCodeUrl, copyPaste: brCode });
+            setPixStatus('generated');
 
-        // 3. Simula a confirmação do pagamento
-        setTimeout(() => {
-            if (!isPixExpired && pendingAppointmentId === newAppointment.id) {
-                setState(prev => ({
-                    ...prev,
-                    appointments: prev.appointments.map(appt => 
-                        appt.id === newAppointment.id
-                            ? { ...appt, status: AppointmentStatus.Confirmed, paymentConfirmed: true }
-                            : appt
-                    )
-                }));
-                setPixStatus('paid');
-            }
-        }, 10000); // Confirma após 10 segundos
-
+             // 3. Simula a confirmação do pagamento
+            const confirmationTimeout = setTimeout(() => {
+                // Verificação dupla para garantir que não confirmamos um pagamento expirado
+                setCountdown(currentCountdown => {
+                    if (currentCountdown > 0) {
+                         setState(prev => ({
+                            ...prev,
+                            appointments: prev.appointments.map(appt => 
+                                appt.id === newAppointment.id
+                                    ? { ...appt, status: AppointmentStatus.Confirmed, paymentConfirmed: true }
+                                    : appt
+                            )
+                        }));
+                        setPixStatus('paid');
+                    }
+                    return currentCountdown;
+                });
+            }, 10000); // Confirma após 10 segundos
+        } catch (error) {
+            console.error("Erro ao gerar PIX:", error);
+            setPixStatus('error');
+            // Remove o agendamento pendente se a geração do PIX falhar
+            setState(prev => ({
+                ...prev,
+                appointments: prev.appointments.filter(a => a.id !== newAppointment.id)
+            }));
+            setPendingAppointmentId(null);
+        }
     }, 1000); // Mostra o "loading" por 1 segundo
   };
 
@@ -166,6 +185,11 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
   const handleBooking = () => {
     if (!selectedSlot || !currentUser) {
         alert("Erro: Horário ou usuário inválido.");
+        return;
+    }
+     if (paymentMethod === 'Pix' && !pixKey) {
+        alert("O pagamento com PIX não foi configurado pelo administrador. Selecione 'Pagar no Local'.");
+        setPaymentMethod('Local');
         return;
     }
     
