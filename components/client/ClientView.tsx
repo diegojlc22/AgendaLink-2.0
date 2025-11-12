@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from '../common/Header';
 import ServiceCatalog from './ServiceCatalog';
 import BookingCalendar from './BookingCalendar';
@@ -11,6 +11,23 @@ type Tab = 'services' | 'promotions' | 'profile';
 
 const ClientView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>('services');
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash === 'profile' || hash === 'promotions' || hash === 'services') {
+        setActiveTab(hash as Tab);
+      } else {
+        setActiveTab('services');
+      }
+    };
+    
+    window.addEventListener('hashchange', handleHashChange, false);
+    handleHashChange(); // check hash on initial load
+
+    return () => window.removeEventListener('hashchange', handleHashChange, false);
+  }, []);
+
 
   const renderContent = () => {
     switch (activeTab) {
@@ -27,7 +44,10 @@ const ClientView: React.FC = () => {
 
   const TabButton: React.FC<{ tabName: Tab; label: string; icon: React.ReactNode }> = ({ tabName, label, icon }) => (
     <button
-      onClick={() => setActiveTab(tabName)}
+      onClick={() => {
+        setActiveTab(tabName);
+        window.location.hash = tabName;
+      }}
       className={`flex-1 flex flex-col items-center justify-center p-2 text-sm transition-colors duration-200 ${
         activeTab === tabName ? 'text-primary border-t-2 border-primary' : 'text-gray-500'
       }`}

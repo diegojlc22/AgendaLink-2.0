@@ -5,6 +5,7 @@ import { INITIAL_APP_STATE } from './constants';
 import ClientView from './components/client/ClientView';
 import AdminView from './components/admin/AdminView';
 import AuthPage from './components/auth/AuthPage';
+import PWAInstallPrompt from './components/common/PWAInstallPrompt';
 
 type AppContextType = {
   state: AppState;
@@ -15,6 +16,17 @@ type AppContextType = {
   register: (newUser: Omit<Client, 'id'>) => void;
   resetPassword: (email: string) => string;
 };
+
+// This interface is needed because it's not a standard part of the TS DOM library yet.
+interface BeforeInstallPromptEvent extends Event {
+  readonly platforms: string[];
+  readonly userChoice: Promise<{
+    outcome: 'accepted' | 'dismissed';
+    platform: string;
+  }>;
+  prompt(): Promise<void>;
+}
+
 
 const AppContext = createContext<AppContextType | null>(null);
 
@@ -97,6 +109,20 @@ export default function App() {
   });
   
   const [isAdminView, setIsAdminView] = useState(currentUser?.role === 'admin');
+  const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPromptEvent(event as BeforeInstallPromptEvent);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
   
   useEffect(() => {
     localStorage.setItem('agendaLinkState', JSON.stringify(state));
@@ -110,6 +136,21 @@ export default function App() {
         localStorage.removeItem('agendaLinkCurrentUser');
     }
   }, [currentUser]);
+
+  const handleInstallClick = () => {
+    if (!installPromptEvent) {
+      return;
+    }
+    installPromptEvent.prompt();
+    installPromptEvent.userChoice.then((choiceResult) => {
+      if (choiceResult.outcome === 'accepted') {
+        console.log('User accepted the A2HS prompt');
+      } else {
+        console.log('User dismissed the A2HS prompt');
+      }
+      setInstallPromptEvent(null);
+    });
+  };
   
   const applyBranding = (branding: BrandingSettings) => {
     document.title = branding.appName;
@@ -181,6 +222,7 @@ export default function App() {
       <div className="min-h-screen font-sans text-gray-800 dark:text-gray-200">
         {isAdminView ? <AdminView /> : <ClientView />}
         {currentUser.role === 'admin' && <ViewToggleButton isAdminView={isAdminView} setIsAdminView={setIsAdminView} />}
+        {installPromptEvent && !isAdminView && <PWAInstallPrompt onInstall={handleInstallClick} />}
       </div>
     </AppContext.Provider>
   );

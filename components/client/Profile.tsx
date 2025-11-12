@@ -1,6 +1,8 @@
+
 import React from 'react';
 import { useAppContext } from '../../App';
 import { AppointmentStatus, Appointment } from '../../types';
+import NotificationManager from '../common/NotificationManager';
 
 const getStatusChip = (status: AppointmentStatus) => {
   switch (status) {
@@ -57,6 +59,11 @@ const Profile: React.FC = () => {
         <p><strong>Nome:</strong> {client.name}</p>
         <p><strong>Email:</strong> {client.email}</p>
         <p><strong>Telefone:</strong> {client.phone}</p>
+      </div>
+      
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg mb-8">
+        <h3 className="text-xl font-bold mb-4">Configurações de Notificação</h3>
+        <NotificationManager />
       </div>
 
       <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg mb-8">

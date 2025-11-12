@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../../App';
 import { Promotion } from '../../types';
@@ -57,8 +58,21 @@ const PromotionCard: React.FC<{ promotion: Promotion }> = ({ promotion }) => {
   const { state } = useAppContext();
   const applicableServices = state.services.filter(s => promotion.serviceIds.includes(s.id));
 
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: `Promoção Imperdível: ${promotion.title}`,
+        text: `${promotion.description} Aproveite agora no ${state.settings.branding.appName}!`,
+        url: window.location.href,
+      }).then(() => console.log('Successful share'))
+        .catch((error) => console.log('Error sharing', error));
+    } else {
+      alert('Compartilhamento não suportado neste navegador.');
+    }
+  };
+
   return (
-    <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-800 dark:to-gray-900 rounded-xl shadow-lg p-6 border-l-4 border-secondary">
+    <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-800 dark:to-gray-900 rounded-xl shadow-lg p-6 border-l-4 border-secondary relative">
       <h3 className="text-2xl font-bold text-secondary">{promotion.title}</h3>
       <p className="text-gray-600 dark:text-gray-300 mt-2">{promotion.description}</p>
       <div className="mt-4">
@@ -78,6 +92,17 @@ const PromotionCard: React.FC<{ promotion: Promotion }> = ({ promotion }) => {
         <div className="mt-6">
             <p><span className="font-bold">{promotion.usageLimit - promotion.uses}</span> agendamentos restantes!</p>
         </div>
+      )}
+      {navigator.share && (
+         <button 
+            onClick={handleShare} 
+            className="absolute top-4 right-4 bg-secondary text-white p-2 rounded-full hover:bg-secondary-dark transition-transform hover:scale-110"
+            aria-label="Compartilhar promoção"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12s-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6.002L15 3.332m-6.684 1.342a3 3 0 110-2.684m0 2.684l6.632-3.316m0 0a3 3 0 110 2.684m0-2.684v2.684" />
+            </svg>
+          </button>
       )}
     </div>
   );
