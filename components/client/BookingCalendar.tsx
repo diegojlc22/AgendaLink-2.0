@@ -11,7 +11,7 @@ interface BookingCalendarProps {
   onBack: () => void;
 }
 
-type PixStatus = 'idle' | 'loading' | 'generated' | 'paid' | 'error';
+type PixStatus = 'idle' | 'loading' | 'generated' | 'notified' | 'paid' | 'error';
 
 const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) => {
   const { state, setState, currentUser } = useAppContext();
@@ -36,7 +36,6 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
   
   // Efeito para o cronômetro de expiração do PIX
   useEffect(() => {
-    // FIX: Changed NodeJS.Timeout to a browser-compatible type for setInterval.
     let timerId: ReturnType<typeof setInterval>;
     if (pixStatus === 'generated' && !isPixExpired) {
       timerId = setInterval(() => {
@@ -44,7 +43,17 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
           if (prev <= 1) {
             clearInterval(timerId);
             setIsPixExpired(true);
-            setPendingAppointmentId(null); // Invalida o agendamento pendente se expirar
+            // Cancela o agendamento pendente se o PIX expirar
+            if (pendingAppointmentId) {
+                setState(prevState => ({
+                    ...prevState,
+                    appointments: prevState.appointments.map(appt => 
+                        appt.id === pendingAppointmentId
+                            ? { ...appt, status: AppointmentStatus.Cancelled }
+                            : appt
+                    )
+                }));
+            }
             return 0;
           }
           return prev - 1;
@@ -52,7 +61,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
       }, 1000);
     }
     return () => clearInterval(timerId);
-  }, [pixStatus, isPixExpired]);
+  }, [pixStatus, isPixExpired, pendingAppointmentId, setState]);
 
 
   const timeSlots = useMemo(() => {
@@ -102,23 +111,22 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
   const initiatePixPayment = () => {
     if (!currentUser || !selectedSlot) return;
 
-    // Garante que o tempo de expiração é um número válido
     const validExpirationTime = (typeof pixExpirationTime === 'number' && pixExpirationTime > 0) ? pixExpirationTime : 60;
 
     setPixStatus('loading');
     setIsPixExpired(false);
     setCountdown(validExpirationTime);
     setPixDetails(null);
+    setPendingAppointmentId(null); // Limpa ID antigo
 
-    // 1. Cria um agendamento pendente
-    const newAppointment: Appointment = {
-      id: `appt${Date.now()}`, // FIX: Removido '_' para TXID válido
+    const newAppointment = {
+      id: `appt${Date.now()}`,
       serviceId: service.id,
       clientId: currentUser.id,
       startTime: selectedSlot.toISOString(),
       endTime: new Date(selectedSlot.getTime() + service.duration * 60000).toISOString(),
       status: AppointmentStatus.Pending,
-      paymentMethod: 'Pix',
+      paymentMethod: 'Pix' as 'Pix',
       paymentConfirmed: false,
       appliedPromoId: appliedPromo?.id,
       finalPrice: finalPrice,
@@ -134,53 +142,36 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
         ) : prev.promotions
     }));
 
-    // 2. Gera o PIX localmente após um breve delay
     setTimeout(() => {
         try {
             const brCode = generateBRCode(
-                pixKey,
-                finalPrice,
-                state.settings.branding.appName,
-                "SAO PAULO",
-                `TXID${newAppointment.id}`
+                pixKey, finalPrice, state.settings.branding.appName, "SAO PAULO", `TXID${newAppointment.id}`
             );
-            
             const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(brCode)}`;
-            
             setPixDetails({ qrCodeUrl, copyPaste: brCode });
             setPixStatus('generated');
-
-             // 3. Simula a confirmação do pagamento
-            const confirmationTimeout = setTimeout(() => {
-                // Verificação dupla para garantir que não confirmamos um pagamento expirado
-                setCountdown(currentCountdown => {
-                    if (currentCountdown > 0) {
-                         setState(prev => ({
-                            ...prev,
-                            appointments: prev.appointments.map(appt => 
-                                appt.id === newAppointment.id
-                                    ? { ...appt, status: AppointmentStatus.Confirmed, paymentConfirmed: true }
-                                    : appt
-                            )
-                        }));
-                        setPixStatus('paid');
-                    }
-                    return currentCountdown;
-                });
-            }, 10000); // Confirma após 10 segundos
         } catch (error) {
             console.error("Erro ao gerar PIX:", error);
             setPixStatus('error');
-            // Remove o agendamento pendente se a geração do PIX falhar
-            setState(prev => ({
-                ...prev,
-                appointments: prev.appointments.filter(a => a.id !== newAppointment.id)
-            }));
+            setState(prev => ({ ...prev, appointments: prev.appointments.filter(a => a.id !== newAppointment.id) }));
             setPendingAppointmentId(null);
         }
-    }, 1000); // Mostra o "loading" por 1 segundo
+    }, 1000);
   };
 
+  const handlePaymentNotified = () => {
+      if (!pendingAppointmentId) return;
+      
+      setState(prev => ({
+          ...prev,
+          appointments: prev.appointments.map(appt => 
+              appt.id === pendingAppointmentId 
+                  ? { ...appt, status: AppointmentStatus.AwaitingConfirmation } 
+                  : appt
+          )
+      }));
+      setPixStatus('notified');
+  };
 
   const handleBooking = () => {
     if (!selectedSlot || !currentUser) {
@@ -221,7 +212,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
   
   const confirmedAppointment = state.appointments.find(a => a.id === pendingAppointmentId && a.status === AppointmentStatus.Confirmed);
 
-  if (pixStatus === 'paid' && confirmedAppointment) {
+  if (pixStatus !== 'idle' && confirmedAppointment) {
       return (
           <div className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-2xl text-center animate-fade-in-up">
               <CheckCircleIcon className="w-24 h-24 mx-auto text-green-500" />
@@ -343,14 +334,31 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
                         )}
                       </div>
                        <div className="mt-4 p-3 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 rounded-lg text-sm font-semibold">
-                          {isPixExpired ? 'Seu código PIX expirou.' : `Aguardando pagamento... Expira em ${Math.floor(countdown / 60)}:${(countdown % 60).toString().padStart(2, '0')}`}
+                          {isPixExpired ? 'Seu código PIX expirou e o agendamento foi cancelado.' : `Aguardando pagamento... Expira em ${Math.floor(countdown / 60)}:${(countdown % 60).toString().padStart(2, '0')}`}
                       </div>
                       <div className="mt-4">
                           <label className="text-sm font-semibold">PIX Copia e Cola:</label>
                           <textarea readOnly value={pixDetails.copyPaste} className="w-full p-2 mt-1 text-xs bg-white dark:bg-gray-800 border rounded-lg" rows={3} onClick={(e) => (e.target as HTMLTextAreaElement).select()}/>
                           <button onClick={() => { navigator.clipboard.writeText(pixDetails.copyPaste); alert('Código PIX copiado!'); }} className="mt-2 text-sm btn-secondary text-white font-bold py-1 px-3 rounded-lg">Copiar Código</button>
                       </div>
+                      {!isPixExpired && (
+                          <button onClick={handlePaymentNotified} className="w-full mt-6 btn-secondary text-white font-bold py-3 px-4 rounded-lg text-lg">
+                            Já Paguei!
+                          </button>
+                      )}
                   </>
+              )}
+               {pixStatus === 'notified' && (
+                <div className="flex flex-col items-center justify-center h-48">
+                    <CheckCircleIcon className="w-16 h-16 text-secondary mb-4" />
+                    <h3 className="text-xl font-bold">Aguardando Confirmação</h3>
+                    <p className="text-gray-600 dark:text-gray-300 mt-2 text-center">
+                        Recebemos a notificação do seu pagamento.<br/> O administrador irá validar e confirmar seu agendamento em breve.
+                    </p>
+                    <button onClick={onBack} className="mt-6 text-sm btn-primary text-white font-bold py-2 px-4 rounded-lg">
+                        OK
+                    </button>
+                </div>
               )}
               {pixStatus === 'error' && (
                   <div className="flex flex-col items-center justify-center h-48 text-red-500">

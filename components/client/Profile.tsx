@@ -10,7 +10,10 @@ const getStatusChip = (status: AppointmentStatus) => {
       return <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">{status}</span>;
     case AppointmentStatus.Pending:
       return <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">{status}</span>;
+    case AppointmentStatus.AwaitingConfirmation:
+      return <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">{status}</span>;
     case AppointmentStatus.Cancelled:
+    case AppointmentStatus.PaymentNotIdentified:
       return <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">{status}</span>;
     case AppointmentStatus.Completed:
         return <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">{status}</span>;

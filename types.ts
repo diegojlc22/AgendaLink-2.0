@@ -13,6 +13,8 @@ export enum AppointmentStatus {
   Confirmed = 'Confirmado',
   Cancelled = 'Cancelado',
   Completed = 'Concluído',
+  AwaitingConfirmation = 'Aguardando confirmação',
+  PaymentNotIdentified = 'Pagamento não identificado',
 }
 
 export interface Appointment {

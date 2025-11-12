@@ -16,11 +16,20 @@ const AppointmentManager: React.FC = () => {
         }));
     };
 
-    const handlePixConfirmation = (id: string) => {
+    const handleConfirmPayment = (id: string) => {
         setState(prev => ({
             ...prev,
             appointments: prev.appointments.map(appt => 
                 appt.id === id ? { ...appt, status: AppointmentStatus.Confirmed, paymentConfirmed: true } : appt
+            ),
+        }));
+    };
+    
+    const handleRejectPayment = (id: string) => {
+        setState(prev => ({
+            ...prev,
+            appointments: prev.appointments.map(appt => 
+                appt.id === id ? { ...appt, status: AppointmentStatus.PaymentNotIdentified, paymentConfirmed: false } : appt
             ),
         }));
     };
@@ -77,10 +86,10 @@ const AppointmentManager: React.FC = () => {
                                                     <button onClick={() => handleStatusChange(appt.id, AppointmentStatus.Cancelled)} className="text-red-600 hover:text-red-900"><XCircleIcon className="w-6 h-6"/></button>
                                                 </div>
                                             )}
-                                            {appt.status === AppointmentStatus.Pending && appt.paymentMethod === 'Pix' && (
+                                            {appt.status === AppointmentStatus.AwaitingConfirmation && (
                                                 <div className="flex space-x-2 items-center">
-                                                    <button onClick={() => handlePixConfirmation(appt.id)} className="text-green-800 hover:text-green-900 text-xs font-bold bg-green-200 hover:bg-green-300 p-2 rounded-lg">Confirmar PIX</button>
-                                                    <button onClick={() => handleStatusChange(appt.id, AppointmentStatus.Cancelled)} className="text-red-600 hover:text-red-900"><XCircleIcon className="w-6 h-6"/></button>
+                                                    <button onClick={() => handleConfirmPayment(appt.id)} title="Confirmar Pagamento" className="text-green-600 hover:text-green-900"><CheckCircleIcon className="w-6 h-6"/></button>
+                                                    <button onClick={() => handleRejectPayment(appt.id)} title="Pagamento Não Identificado" className="text-red-600 hover:text-red-900"><XCircleIcon className="w-6 h-6"/></button>
                                                 </div>
                                             )}
                                              {appt.status === AppointmentStatus.Confirmed && (
