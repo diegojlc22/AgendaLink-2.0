@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../../App';
 import { Promotion, Service } from '../../types';
 
@@ -15,6 +15,15 @@ const PromotionForm: React.FC<{ promotion?: Promotion; services: Service[]; onSa
         usageLimit: promotion?.usageLimit || undefined,
         isActive: promotion?.isActive ?? true,
     });
+    const [applyToAll, setApplyToAll] = useState(promotion ? promotion.serviceIds.length === services.length && services.length > 0 : false);
+
+    useEffect(() => {
+        // If editing a promotion that applies to all services, ensure the checkbox stays checked
+        if (promotion && promotion.serviceIds.length === services.length && services.length > 0) {
+            setApplyToAll(true);
+        }
+    }, [promotion, services]);
+
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
@@ -37,10 +46,14 @@ const PromotionForm: React.FC<{ promotion?: Promotion; services: Service[]; onSa
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        
+        const finalServiceIds = applyToAll ? services.map(s => s.id) : formData.serviceIds;
+
         const newPromotion: Promotion = {
             id: promotion?.id || new Date().toISOString(),
             uses: promotion?.uses || 0,
             ...formData,
+            serviceIds: finalServiceIds,
             startDate: new Date(formData.startDate).toISOString(),
             endDate: new Date(formData.endDate).toISOString(),
         };
@@ -70,10 +83,19 @@ const PromotionForm: React.FC<{ promotion?: Promotion; services: Service[]; onSa
 
             <div>
                 <h4 className="font-semibold">Serviços Aplicáveis</h4>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2 max-h-32 overflow-y-auto p-2 border rounded-lg bg-gray-50 dark:bg-gray-900/50">
+                 <label className="flex items-center space-x-2 my-2 cursor-pointer">
+                    <input
+                        type="checkbox"
+                        checked={applyToAll}
+                        onChange={(e) => setApplyToAll(e.target.checked)}
+                        className="rounded text-primary focus:ring-primary h-4 w-4"
+                    />
+                    <span>Aplicar a todos os serviços</span>
+                </label>
+                <div className={`grid grid-cols-2 md:grid-cols-3 gap-2 mt-2 max-h-32 overflow-y-auto p-2 border rounded-lg bg-gray-50 dark:bg-gray-900/50 ${applyToAll ? 'opacity-50 cursor-not-allowed' : ''}`}>
                     {services.map(service => (
-                        <label key={service.id} className="flex items-center space-x-2 p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700">
-                            <input type="checkbox" checked={formData.serviceIds.includes(service.id)} onChange={() => handleServiceChange(service.id)} className="rounded text-primary focus:ring-primary"/>
+                        <label key={service.id} className={`flex items-center space-x-2 p-1 rounded-md ${!applyToAll ? 'hover:bg-gray-200 dark:hover:bg-gray-700' : ''}`}>
+                            <input type="checkbox" checked={applyToAll || formData.serviceIds.includes(service.id)} onChange={() => handleServiceChange(service.id)} className="rounded text-primary focus:ring-primary" disabled={applyToAll}/>
                             <span>{service.name}</span>
                         </label>
                     ))}
@@ -138,11 +160,16 @@ const PromotionManager: React.FC = () => {
             )}
             
             <div className="space-y-4">
-                {state.promotions.map(promo => (
+                {state.promotions.map(promo => {
+                    const isForAllServices = promo.serviceIds.length === state.services.length && state.services.length > 0;
+                    return (
                     <div key={promo.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg flex justify-between items-center">
                         <div>
                             <p className="font-bold">{promo.title} {promo.isActive ? <span className="text-xs text-green-500">(Ativa)</span> : <span className="text-xs text-red-500">(Inativa)</span>}</p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">{promo.promoCode ? `Código: ${promo.promoCode}` : 'Sem código'}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                                {promo.promoCode ? `Código: ${promo.promoCode}` : 'Sem código'}
+                                {isForAllServices && <span className="ml-2 inline-block bg-secondary/20 text-secondary text-xs font-semibold px-2 py-0.5 rounded-full">Todos os serviços</span>}
+                            </p>
                             <p className="text-sm text-gray-500 dark:text-gray-400">Usos: {promo.uses}{promo.usageLimit ? ` / ${promo.usageLimit}` : ''}</p>
                         </div>
                         <div className="flex space-x-2">
@@ -150,7 +177,7 @@ const PromotionManager: React.FC = () => {
                             <button onClick={() => handleDelete(promo.id)} className="px-3 py-1 bg-red-500 text-white text-sm rounded-lg">Excluir</button>
                         </div>
                     </div>
-                ))}
+                )})}
             </div>
         </div>
     );
