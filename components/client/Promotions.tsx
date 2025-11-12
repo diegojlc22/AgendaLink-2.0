@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../../App';
 import { Promotion } from '../../types';
-import { ClockIcon } from '../common/Icons';
+import { ClockIcon, UploadIcon } from '../common/Icons';
 
 const CountdownTimer: React.FC<{ expiry: string }> = ({ expiry }) => {
     const calculateTimeLeft = () => {
@@ -63,7 +63,6 @@ const PromotionCard: React.FC<{ promotion: Promotion }> = ({ promotion }) => {
       navigator.share({
         title: `Promoção Imperdível: ${promotion.title}`,
         text: `${promotion.description} Aproveite agora no ${state.settings.branding.appName}!`,
-        url: window.location.href,
       }).then(() => console.log('Successful share'))
         .catch((error) => console.log('Error sharing', error));
     } else {
@@ -99,9 +98,7 @@ const PromotionCard: React.FC<{ promotion: Promotion }> = ({ promotion }) => {
             className="absolute top-4 right-4 bg-secondary text-white p-2 rounded-full hover:bg-secondary-dark transition-transform hover:scale-110"
             aria-label="Compartilhar promoção"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12s-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6.002L15 3.332m-6.684 1.342a3 3 0 110-2.684m0 2.684l6.632-3.316m0 0a3 3 0 110 2.684m0-2.684v2.684" />
-            </svg>
+            <UploadIcon className="h-5 w-5" />
           </button>
       )}
     </div>
