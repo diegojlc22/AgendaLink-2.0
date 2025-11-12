@@ -7,7 +7,7 @@ import ClientView from './components/client/ClientView';
 import AdminView from './components/admin/AdminView';
 import AuthPage from './components/auth/AuthPage';
 import PWAInstallPrompt from './components/common/PWAInstallPrompt';
-import { AlertTriangleIcon, WifiOffIcon } from './components/common/Icons';
+import { AlertTriangleIcon, WifiOffIcon, ShieldCheckIcon } from './components/common/Icons';
 
 type AppContextType = {
   state: AppState;
@@ -49,6 +49,95 @@ const hexToRgb = (hex: string) => {
     : '99 102 241'; // Default to indigo
 };
 
+const MaintenanceMode: React.FC = () => {
+    const { state, login } = useAppContext();
+    const { branding, maintenanceMode } = state.settings;
+
+    const [clickCount, setClickCount] = useState(0);
+    const [showAdminLogin, setShowAdminLogin] = useState(false);
+
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+
+    // 5 clicks on the logo/text area will reveal the login form.
+    const handleSecretClick = () => {
+        const newCount = clickCount + 1;
+        setClickCount(newCount);
+        if (newCount >= 5) {
+            setShowAdminLogin(true);
+        }
+    };
+
+    const handleAdminLogin = (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        try {
+            // IMPORTANT: We must also check that the user logging in has the 'admin' role.
+            const user = state.clients.find(c => c.email.toLowerCase() === email.toLowerCase() && c.password === password);
+            if (user?.role !== 'admin') {
+                throw new Error('Acesso negado. Apenas administradores podem entrar durante a manutenção.');
+            }
+            login(email, password); // This will update currentUser and re-render App
+        } catch (err: any) {
+            setError(err.message);
+        }
+    };
+
+    return (
+        <div className="flex items-center justify-center h-screen bg-gray-100 text-center p-4 dark:bg-gray-900">
+            <div className="p-8 sm:p-10 bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
+                <div onClick={handleSecretClick} className="cursor-pointer">
+                    {branding.logoEnabled && branding.logoUrl ? (
+                        <img src={branding.logoUrl} alt="Logo" className="w-16 h-16 mx-auto mb-4" />
+                    ) : (
+                        <ShieldCheckIcon className="w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-gray-500" />
+                    )}
+                    <h1 className="text-3xl font-bold text-primary mb-2">Em Manutenção</h1>
+                    <p className="text-gray-600 dark:text-gray-300 mb-6">{maintenanceMode.message}</p>
+                </div>
+
+                {showAdminLogin && (
+                    <form className="space-y-4 text-left border-t border-gray-200 dark:border-gray-700 pt-6" onSubmit={handleAdminLogin}>
+                        <h2 className="text-xl font-bold text-center text-secondary mb-4">Login de Administrador</h2>
+                        {error && (
+                            <p className="p-2 text-sm text-center text-red-700 bg-red-100 dark:bg-red-900/20 dark:text-red-300 rounded-lg">
+                                {error}
+                            </p>
+                        )}
+                        <div>
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+                            <input
+                                type="email"
+                                value={email}
+                                onChange={e => setEmail(e.target.value)}
+                                className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg bg-white dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-primary focus:border-primary text-gray-900 dark:text-white"
+                                required
+                                placeholder="admin@admin"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Senha</label>
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={e => setPassword(e.target.value)}
+                                className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-lg bg-white dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-primary focus:border-primary text-gray-900 dark:text-white"
+                                required
+                                placeholder="********"
+                            />
+                        </div>
+                        <button type="submit" className="w-full px-4 py-2 font-bold text-white rounded-lg btn-secondary">
+                            Acessar
+                        </button>
+                    </form>
+                )}
+            </div>
+        </div>
+    );
+};
+
+
 const ViewToggleButton: React.FC<{ isAdminView: boolean; setIsAdminView: (isAdmin: boolean) => void }> = ({ isAdminView, setIsAdminView }) => (
   <div className="fixed bottom-4 right-4 z-50">
     <button
@@ -58,15 +147,6 @@ const ViewToggleButton: React.FC<{ isAdminView: boolean; setIsAdminView: (isAdmi
       {isAdminView ? 'Ver como Cliente' : 'Painel Admin'}
     </button>
   </div>
-);
-
-const MaintenanceMode: React.FC<{ message: string }> = ({ message }) => (
-    <div className="flex items-center justify-center h-screen bg-gray-100 text-center">
-        <div className="p-10 bg-white rounded-lg shadow-xl">
-            <h1 className="text-3xl font-bold text-primary mb-4">Em Manutenção</h1>
-            <p className="text-gray-600">{message}</p>
-        </div>
-    </div>
 );
 
 const SyncStatusIndicator: React.FC = () => (
@@ -254,43 +334,36 @@ export default function App() {
   const isMaintenance = state.settings.maintenanceMode.enabled;
   const isAdmin = currentUser?.role === 'admin';
 
-  // Maintenance Mode Check: If enabled, only admins can access the site.
-  // All other users (including non-logged-in ones) will see the maintenance page.
-  if (isMaintenance && !isAdmin) {
-    return <MaintenanceMode message={state.settings.maintenanceMode.message} />;
-  }
-
-  // Authentication Check: If not in maintenance (or if user is an admin),
-  // show the login page if no user is authenticated.
-  if (!currentUser) {
-    return (
-      <AppContext.Provider value={contextValue}>
-        <AuthPage />
-      </AppContext.Provider>
-    );
-  }
-
-  // Main Application View
+  // NEW RENDER LOGIC: Wrap the entire application in the context provider.
+  // Then, conditionally render the correct view (Maintenance, Auth, or Main App).
+  // This ensures all components can access the context, fixing the lockout bug
+  // and enabling the secret admin login on the maintenance page.
   return (
     <AppContext.Provider value={contextValue}>
-      <div className="min-h-screen font-sans text-gray-800 dark:text-gray-200">
-        {!isOnline && <SyncStatusIndicator />}
-        
-        {/* Admin-only banner to indicate maintenance mode is active */}
-        {isMaintenance && isAdmin && (
-            <div className="bg-yellow-400 text-yellow-900 text-center p-2 z-[100] flex items-center justify-center text-sm shadow-lg sticky top-0 font-semibold">
-                <AlertTriangleIcon className="h-5 w-5 mr-2" />
-                MODO MANUTENÇÃO ATIVO
-            </div>
-        )}
+      {isMaintenance && !isAdmin ? (
+        <MaintenanceMode />
+      ) : !currentUser ? (
+        <AuthPage />
+      ) : (
+        <div className="min-h-screen font-sans text-gray-800 dark:text-gray-200">
+          {!isOnline && <SyncStatusIndicator />}
+          
+          {/* Admin-only banner to indicate maintenance mode is active */}
+          {isMaintenance && isAdmin && (
+              <div className="bg-yellow-400 text-yellow-900 text-center p-2 z-[100] flex items-center justify-center text-sm shadow-lg sticky top-0 font-semibold">
+                  <AlertTriangleIcon className="h-5 w-5 mr-2" />
+                  MODO MANUTENÇÃO ATIVO
+              </div>
+          )}
 
-        <div className={!isOnline ? 'pt-10' : ''}>
-          {isAdminView ? <AdminView /> : <ClientView />}
+          <div className={!isOnline ? 'pt-10' : ''}>
+            {isAdminView ? <AdminView /> : <ClientView />}
+          </div>
+          
+          {isAdmin && <ViewToggleButton isAdminView={isAdminView} setIsAdminView={setIsAdminView} />}
+          {installPromptEvent && !isAdminView && <PWAInstallPrompt onInstall={handleInstallClick} />}
         </div>
-        
-        {isAdmin && <ViewToggleButton isAdminView={isAdminView} setIsAdminView={setIsAdminView} />}
-        {installPromptEvent && !isAdminView && <PWAInstallPrompt onInstall={handleInstallClick} />}
-      </div>
+      )}
     </AppContext.Provider>
   );
 }
