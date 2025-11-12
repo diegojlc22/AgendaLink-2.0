@@ -1,20 +1,79 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
 
-# Run and deploy your AI Studio app
+# AgendaLink 2.0 🚀
 
-This contains everything you need to run your app locally.
+**Sua solução completa e moderna para gestão de beleza e agendamentos, agora como um Progressive Web App (PWA) de alta performance!**
 
-View your app in AI Studio: https://ai.studio/apps/drive/1xdVdLPcPmYUUCNnFypa1Wr1Nv6BvgkS3
+![Banner de Tecnologia](https://www.infomoney.com.br/wp-content/uploads/2019/06/tecnologia-2.jpg?w=900&quality=70&strip=all)
 
-## Run Locally
+---
 
-**Prerequisites:**  Node.js
+## 📝 Sobre o Projeto
 
+O AgendaLink 2.0 é uma aplicação web completa, projetada para profissionais da beleza que buscam otimizar a gestão de seus negócios. A plataforma oferece um painel administrativo robusto e uma interface de agendamento inteligente e intuitiva para clientes.
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+Totalmente transformado em um **Progressive Web App**, o AgendaLink 2.0 combina a acessibilidade da web com a experiência de um aplicativo nativo, funcionando perfeitamente em celulares, tablets e desktops.
+
+---
+
+## ✨ Funcionalidades Principais
+
+O AgendaLink 2.0 é repleto de funcionalidades para atender tanto o administrador do negócio quanto o cliente final.
+
+### 👩‍💼 Para Clientes:
+- **Catálogo de Serviços Detalhado:** Explore serviços com descrições, preços e durações.
+- **Agendamento Inteligente:** Escolha a data e o horário com base na disponibilidade em tempo real.
+- **Promoções e Descontos:** Aplique códigos promocionais e aproveite ofertas especiais.
+- **Pagamento via PIX:** Gere QR Codes para pagamento direto no app.
+- **Perfil Pessoal:** Acompanhe seu histórico de agendamentos e gerencie suas informações.
+
+### 👑 Para Administradores:
+- **Dashboard Analítico:** Visualize a saúde do seu negócio com gráficos de receita e serviços populares.
+- **Gestão de Agendamentos:** Confirme, cancele e finalize agendamentos com facilidade.
+- **Gerenciador de Serviços e Clientes:** Cadastre, edite e remova serviços e clientes.
+- **Criação de Promoções:** Crie campanhas de desconto (percentual ou fixo) com limites de uso e validade.
+- **Personalização (Branding):** Altere o nome, o logo e as cores do aplicativo para combinar com sua marca.
+- **Configurações Avançadas:** Configure chaves PIX, ative o modo manutenção e faça backup dos dados.
+
+---
+
+## 📲 Experiência PWA (Progressive Web App)
+
+Leve seu negócio para o próximo nível com funcionalidades de aplicativos nativos:
+
+- **Instalável:** Adicione o AgendaLink à tela inicial do seu celular ou desktop com um único clique.
+- **Funciona Offline:** O aplicativo carrega instantaneamente e funcionalidades essenciais funcionam mesmo sem conexão com a internet.
+- **Notificações Push:** Envie lembretes de agendamento e promoções diretamente para os dispositivos dos seus clientes (requer backend).
+- **Atalhos Rápidos:** Acesse seções como "Agendar" e "Minha Conta" diretamente do ícone do app.
+- **Experiência Imersiva:** Uma vez instalado, o app roda em tela cheia, sem a barra de endereço do navegador.
+- **Compartilhamento Nativo:** Clientes podem compartilhar promoções facilmente usando a função de compartilhamento do dispositivo.
+
+---
+
+## 🛠️ Tecnologias Utilizadas
+
+- **React:** Para uma interface de usuário reativa e moderna.
+- **TypeScript:** Para um código mais seguro e manutenível.
+- **Tailwind CSS:** Para estilização rápida e responsiva.
+- **Recharts:** Para a criação de gráficos interativos no dashboard.
+- **Service Workers:** Para habilitar o cache, o funcionamento offline e as notificações.
+- **Web App Manifest:** Para garantir a experiência de instalação e a aparência nativa.
+
+---
+
+## 🚀 Como Usar
+
+A aplicação simula um ambiente completo sem a necessidade de um backend. Todos os dados são salvos localmente no seu navegador (`localStorage`).
+
+### Visão do Cliente
+- **Login:** Use as credenciais `cliente@agendalink.com` / `123`.
+- **Navegação:** Use a barra de navegação inferior para explorar serviços, ver promoções e acessar seu perfil.
+- **Agendamento:** Escolha um serviço, selecione data/hora e confirme.
+- **Instalação:** Clique no botão **"Instalar App"** que aparece no canto da tela para adicionar o AgendaLink à sua tela inicial.
+
+### Painel do Administrador
+- **Login:** Use as credenciais `admin@admin` / `admin`.
+- **Acesso:** Após o login, você verá o painel administrativo.
+- **Alternar Visão:** Um botão flutuante permite que você alterne entre a visão de administrador e a de cliente para testar a experiência completa.
+
+---
+Aproveite o AgendaLink 2.0 para transformar a gestão do seu negócio de beleza!
