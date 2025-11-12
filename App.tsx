@@ -1,4 +1,5 @@
 
+
 import React, { useState, createContext, useContext, useEffect, useMemo, useCallback } from 'react';
 import { AppState, BrandingSettings, Client } from './types';
 import { INITIAL_APP_STATE } from './constants';
@@ -6,7 +7,7 @@ import ClientView from './components/client/ClientView';
 import AdminView from './components/admin/AdminView';
 import AuthPage from './components/auth/AuthPage';
 import PWAInstallPrompt from './components/common/PWAInstallPrompt';
-import { WifiOffIcon } from './components/common/Icons';
+import { AlertTriangleIcon, WifiOffIcon } from './components/common/Icons';
 
 type AppContextType = {
   state: AppState;
@@ -250,26 +251,44 @@ export default function App() {
 
   const contextValue = useMemo(() => ({ state, setState, currentUser, login, logout, register, resetPassword }), [state, currentUser, login, logout, register, resetPassword, setState]);
 
+  const isMaintenance = state.settings.maintenanceMode.enabled;
+  const isAdmin = currentUser?.role === 'admin';
+
+  // Maintenance Mode Check: If enabled, only admins can access the site.
+  // All other users (including non-logged-in ones) will see the maintenance page.
+  if (isMaintenance && !isAdmin) {
+    return <MaintenanceMode message={state.settings.maintenanceMode.message} />;
+  }
+
+  // Authentication Check: If not in maintenance (or if user is an admin),
+  // show the login page if no user is authenticated.
   if (!currentUser) {
-      return (
-        <AppContext.Provider value={contextValue}>
-            <AuthPage />
-        </AppContext.Provider>
-      );
+    return (
+      <AppContext.Provider value={contextValue}>
+        <AuthPage />
+      </AppContext.Provider>
+    );
   }
 
-  if (state.settings.maintenanceMode.enabled && currentUser.role !== 'admin') {
-      return <MaintenanceMode message={state.settings.maintenanceMode.message} />;
-  }
-
+  // Main Application View
   return (
     <AppContext.Provider value={contextValue}>
       <div className="min-h-screen font-sans text-gray-800 dark:text-gray-200">
         {!isOnline && <SyncStatusIndicator />}
+        
+        {/* Admin-only banner to indicate maintenance mode is active */}
+        {isMaintenance && isAdmin && (
+            <div className="bg-yellow-400 text-yellow-900 text-center p-2 z-[100] flex items-center justify-center text-sm shadow-lg sticky top-0 font-semibold">
+                <AlertTriangleIcon className="h-5 w-5 mr-2" />
+                MODO MANUTENÇÃO ATIVO
+            </div>
+        )}
+
         <div className={!isOnline ? 'pt-10' : ''}>
-            {isAdminView ? <AdminView /> : <ClientView />}
+          {isAdminView ? <AdminView /> : <ClientView />}
         </div>
-        {currentUser.role === 'admin' && <ViewToggleButton isAdminView={isAdminView} setIsAdminView={setIsAdminView} />}
+        
+        {isAdmin && <ViewToggleButton isAdminView={isAdminView} setIsAdminView={setIsAdminView} />}
         {installPromptEvent && !isAdminView && <PWAInstallPrompt onInstall={handleInstallClick} />}
       </div>
     </AppContext.Provider>
