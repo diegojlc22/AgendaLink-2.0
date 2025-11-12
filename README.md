@@ -61,6 +61,38 @@ Leve seu negócio para o próximo nível com funcionalidades de aplicativos nati
 
 ---
 
+## 🚀 Como Rodar o Projeto Localmente
+
+Rodar o sistema na sua máquina é muito simples e rápido. Você só precisa ter o **Node.js** instalado.
+
+Siga os passos abaixo:
+
+1.  **Crie uma Pasta para o Projeto:**
+    Crie uma nova pasta no seu computador e salve todos os arquivos do projeto dentro dela.
+
+2.  **Abra o Terminal:**
+    Abra o terminal do seu sistema (PowerShell, CMD, Terminal do VS Code, etc.) e navegue até a pasta que você criou no passo anterior.
+
+    ```bash
+    cd caminho/para/a/pasta/do-projeto
+    ```
+
+3.  **Inicie o Servidor de Desenvolvimento:**
+    Execute o seguinte comando no terminal. Ele irá baixar e rodar um servidor de desenvolvimento moderno (Vite) para você, sem precisar instalar nada permanentemente.
+
+    ```bash
+    npx vite
+    ```
+
+4.  **Abra no Navegador:**
+    Após executar o comando, o terminal irá mostrar uma URL local. Copie e cole no seu navegador. Geralmente, será algo como:
+
+    `http://localhost:5173`
+
+    Pronto! O sistema estará rodando na sua máquina e será atualizado automaticamente sempre que você salvar uma alteração nos arquivos.
+
+---
+
 ## 🚀 Como Usar
 
 A aplicação simula um ambiente completo sem a necessidade de um backend. Todos os dados são salvos localmente no seu navegador (`localStorage`).
