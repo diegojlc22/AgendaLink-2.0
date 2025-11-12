@@ -1,3 +1,4 @@
+
 import React, { useState, createContext, useContext, useEffect, useMemo, useCallback } from 'react';
 import { AppState, BrandingSettings, Client } from './types';
 import { INITIAL_APP_STATE } from './constants';
@@ -55,13 +56,35 @@ const MaintenanceMode: React.FC<{ message: string }> = ({ message }) => (
 
 export default function App() {
   const [state, setState] = useState<AppState>(() => {
+    let finalState: AppState;
     try {
       const savedState = localStorage.getItem('agendaLinkState');
-      return savedState ? JSON.parse(savedState) : INITIAL_APP_STATE;
+      finalState = savedState ? JSON.parse(savedState) : INITIAL_APP_STATE;
     } catch (error) {
       console.error("Failed to parse state from localStorage", error);
-      return INITIAL_APP_STATE;
+      finalState = INITIAL_APP_STATE;
     }
+
+    // BUG FIX: Ensure default admin user is always up-to-date from constants,
+    // preventing login issues caused by stale data in localStorage.
+    const defaultAdmin = INITIAL_APP_STATE.clients.find(c => c.role === 'admin');
+    if (defaultAdmin) {
+      const adminIndex = finalState.clients.findIndex(c => c.email.toLowerCase() === defaultAdmin.email.toLowerCase());
+
+      if (adminIndex !== -1) {
+        // Admin exists, ensure critical details like password and role are correct.
+        finalState.clients[adminIndex] = {
+          ...finalState.clients[adminIndex],
+          password: defaultAdmin.password,
+          role: 'admin'
+        };
+      } else {
+        // Admin doesn't exist, add them.
+        finalState.clients.push(defaultAdmin);
+      }
+    }
+
+    return finalState;
   });
 
   const [currentUser, setCurrentUser] = useState<Client | null>(() => {
