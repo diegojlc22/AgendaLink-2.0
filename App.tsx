@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, createContext, useContext, useEffect, useMemo, useCallback } from 'react';
 import { AppState, BrandingSettings, Client } from './types';
 import { INITIAL_APP_STATE } from './constants';
@@ -12,7 +13,7 @@ import { AlertTriangleIcon, WifiOffIcon, ShieldCheckIcon } from './components/co
 type AppContextType = {
   state: AppState;
   setState: React.Dispatch<React.SetStateAction<AppState>>;
-  currentUser: Client | null;
+  currentUser: Omit<Client, 'password'> | null;
   login: (email: string, password: string) => void;
   logout: () => void;
   register: (newUser: Omit<Client, 'id'>) => void;
@@ -190,10 +191,16 @@ export default function App() {
     return finalState;
   });
 
-  const [currentUser, setCurrentUser] = useState<Client | null>(() => {
+  const [currentUser, setCurrentUser] = useState<Omit<Client, 'password'> | null>(() => {
     try {
         const savedUser = localStorage.getItem('agendaLinkCurrentUser');
-        return savedUser ? JSON.parse(savedUser) : null;
+        if (savedUser) {
+          const user = JSON.parse(savedUser);
+          // Security: Ensure password is not part of the session state
+          const { password, ...userWithoutPassword } = user;
+          return userWithoutPassword;
+        }
+        return null;
     } catch (error) {
         return null;
     }
@@ -289,7 +296,8 @@ export default function App() {
   const login = useCallback((email: string, password: string) => {
     const user = state.clients.find(c => c.email.toLowerCase() === email.toLowerCase() && c.password === password);
     if (user) {
-        setCurrentUser(user);
+        const { password: _, ...userWithoutPassword } = user;
+        setCurrentUser(userWithoutPassword);
         setIsAdminView(user.role === 'admin');
     } else {
         throw new Error('Email ou senha inválidos.');
@@ -310,7 +318,8 @@ export default function App() {
         ...newUserData
     };
     setState(prev => ({ ...prev, clients: [...prev.clients, newUser] }));
-    setCurrentUser(newUser);
+    const { password: _, ...userWithoutPassword } = newUser;
+    setCurrentUser(userWithoutPassword);
     setIsAdminView(false);
   }, [state.clients, setState]);
 

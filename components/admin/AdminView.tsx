@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, lazy, Suspense } from 'react';
 import { CalendarIcon, CogIcon, DashboardIcon, TagIcon, UsersIcon, PercentageIcon } from '../common/Icons';
-import Dashboard from './Dashboard';
 import AppointmentManager from './AppointmentManager';
 import ServiceManager from './ServiceManager';
 import ClientManager from './ClientManager';
 import SettingsManager from './SettingsManager';
 import { useAppContext } from '../../App';
 import PromotionManager from './PromotionManager';
+
+const Dashboard = lazy(() => import('./Dashboard'));
 
 type AdminSection = 'dashboard' | 'appointments' | 'services' | 'clients' | 'promotions' | 'settings';
 
@@ -67,7 +68,9 @@ const AdminView: React.FC = () => {
                 </div>
             </aside>
             <main className="flex-1 overflow-y-auto p-8">
-                {renderSection()}
+                <Suspense fallback={<div className="flex items-center justify-center h-full text-gray-500">Carregando...</div>}>
+                    {renderSection()}
+                </Suspense>
             </main>
         </div>
     );

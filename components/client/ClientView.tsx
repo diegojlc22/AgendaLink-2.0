@@ -1,8 +1,8 @@
 
+
 import React, { useState, useEffect } from 'react';
 import Header from '../common/Header';
 import ServiceCatalog from './ServiceCatalog';
-import BookingCalendar from './BookingCalendar';
 import Promotions from './Promotions';
 import Profile from './Profile';
 import { CalendarIcon, TagIcon, UsersIcon } from '../common/Icons';
