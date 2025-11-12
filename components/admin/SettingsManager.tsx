@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../../App';
-import { AppState, BrandingSettings, PixKeyType } from '../../types';
+import { AppState, BrandingSettings, PixKeyType, Client } from '../../types';
 import { DownloadIcon, UploadIcon, TrashIcon } from '../common/Icons';
-import { INITIAL_APP_STATE } from '../../constants';
 import { saveStateToDB } from '../../services/database';
 
 const BrandingSettingsEditor: React.FC = () => {
@@ -196,15 +195,38 @@ const DataManagement: React.FC = () => {
 
     const handleClearData = async () => {
         if (window.confirm('ATENÇÃO: Esta ação é irreversível e irá apagar TODOS os dados do aplicativo (agendamentos, clientes, configurações, etc.) guardados neste navegador. Deseja continuar?')) {
-            const adminUser = INITIAL_APP_STATE.clients.find(c => c.role === 'admin');
-
-            if (!adminUser) {
-                alert('Erro: Usuário administrador padrão não encontrado. A operação foi cancelada.');
-                return;
-            }
             
+            const adminUser: Client = {
+                id: '2', // Manter o ID original do admin para consistência
+                name: 'Admin',
+                email: 'admin@admin',
+                phone: '00000000000',
+                password: 'admin',
+                role: 'admin',
+            };
+
             const resetState: AppState = {
-                settings: INITIAL_APP_STATE.settings,
+                settings: {
+                    branding: {
+                      appName: 'AgendaLink 2.0',
+                      logoUrl: 'https://tailwindui.com/img/logos/mark.svg?color=pink&shade=500',
+                      logoEnabled: true,
+                      colors: {
+                        primary: '#d81b60',
+                        secondary: '#8e24aa',
+                        accent: '#ffb300',
+                      },
+                    },
+                    pixCredentials: {
+                      pixKeyType: '',
+                      pixKey: '',
+                      pixExpirationTime: 60,
+                    },
+                    maintenanceMode: {
+                      enabled: false,
+                      message: 'Estamos em manutenção. Voltamos em breve!',
+                    },
+                },
                 clients: [adminUser],
                 services: [],
                 appointments: [],
@@ -212,20 +234,25 @@ const DataManagement: React.FC = () => {
                 pixTransactions: [],
             };
 
-            await saveStateToDB(resetState); // Overwrite database with clean state
-            localStorage.removeItem('agendaLinkCurrentUser');
+            try {
+                await saveStateToDB(resetState);
+                localStorage.removeItem('agendaLinkCurrentUser');
 
-            if ('serviceWorker' in navigator && window.caches) {
-                const keys = await caches.keys();
-                await Promise.all(keys.map(key => caches.delete(key)));
-                const registration = await navigator.serviceWorker.getRegistration();
-                if (registration) {
-                    await registration.unregister();
+                if ('serviceWorker' in navigator && window.caches) {
+                    const keys = await caches.keys();
+                    await Promise.all(keys.map(key => caches.delete(key)));
+                    const registration = await navigator.serviceWorker.getRegistration();
+                    if (registration) {
+                        await registration.unregister();
+                    }
                 }
-            }
 
-            alert('Todos os dados foram apagados. A aplicação será recarregada.');
-            window.location.reload();
+                alert('Todos os dados foram apagados. A aplicação será recarregada.');
+                window.location.reload();
+            } catch(error) {
+                console.error("Falha ao limpar os dados:", error);
+                alert("Ocorreu um erro ao tentar limpar os dados. Verifique o console para mais detalhes.");
+            }
         }
     };
     
