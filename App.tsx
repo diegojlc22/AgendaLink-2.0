@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, createContext, useContext, useEffect, useMemo, useCallback } from 'react';
 import { AppState, BrandingSettings, Client } from './types';
 import { INITIAL_APP_STATE } from './constants';
@@ -9,6 +6,7 @@ import AdminView from './components/admin/AdminView';
 import AuthPage from './components/auth/AuthPage';
 import PWAInstallPrompt from './components/common/PWAInstallPrompt';
 import { AlertTriangleIcon, WifiOffIcon, ShieldCheckIcon } from './components/common/Icons';
+import { initDatabase, loadStateFromDB, saveStateToDB } from './services/database';
 
 type AppContextType = {
   state: AppState;
@@ -159,38 +157,9 @@ const SyncStatusIndicator: React.FC = () => (
 
 
 export default function App() {
-  const [state, setState] = useState<AppState>(() => {
-    let finalState: AppState;
-    try {
-      const savedState = localStorage.getItem('agendaLinkState');
-      finalState = savedState ? JSON.parse(savedState) : INITIAL_APP_STATE;
-    } catch (error) {
-      console.error("Failed to parse state from localStorage", error);
-      finalState = INITIAL_APP_STATE;
-    }
-
-    // BUG FIX: Ensure default admin user is always up-to-date from constants,
-    // preventing login issues caused by stale data in localStorage.
-    const defaultAdmin = INITIAL_APP_STATE.clients.find(c => c.role === 'admin');
-    if (defaultAdmin) {
-      const adminIndex = finalState.clients.findIndex(c => c.email.toLowerCase() === defaultAdmin.email.toLowerCase());
-
-      if (adminIndex !== -1) {
-        // Admin exists, ensure critical details like password and role are correct.
-        finalState.clients[adminIndex] = {
-          ...finalState.clients[adminIndex],
-          password: defaultAdmin.password,
-          role: 'admin'
-        };
-      } else {
-        // Admin doesn't exist, add them.
-        finalState.clients.push(defaultAdmin);
-      }
-    }
-
-    return finalState;
-  });
-
+  const [state, setState] = useState<AppState>(INITIAL_APP_STATE);
+  const [isLoading, setIsLoading] = useState(true); // Novo estado de carregamento
+  
   const [currentUser, setCurrentUser] = useState<Omit<Client, 'password'> | null>(() => {
     try {
         const savedUser = localStorage.getItem('agendaLinkCurrentUser');
@@ -210,6 +179,38 @@ export default function App() {
   const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
+  // Efeito para inicializar o DB e carregar o estado
+  useEffect(() => {
+    const initializeApp = async () => {
+      await initDatabase();
+      let finalState = loadStateFromDB();
+
+      if (!finalState) {
+        finalState = INITIAL_APP_STATE;
+      }
+      
+      // BUG FIX: Mantém o admin atualizado
+      const defaultAdmin = INITIAL_APP_STATE.clients.find(c => c.role === 'admin');
+      if (defaultAdmin) {
+        const adminIndex = finalState.clients.findIndex(c => c.email.toLowerCase() === defaultAdmin.email.toLowerCase());
+        if (adminIndex !== -1) {
+          finalState.clients[adminIndex] = {
+            ...finalState.clients[adminIndex],
+            password: defaultAdmin.password,
+            role: 'admin'
+          };
+        } else {
+          finalState.clients.push(defaultAdmin);
+        }
+      }
+      
+      setState(finalState);
+      setIsLoading(false);
+    };
+
+    initializeApp();
+  }, []);
+
   // Effect for online/offline status
   useEffect(() => {
     const goOnline = () => setIsOnline(true);
@@ -228,8 +229,6 @@ export default function App() {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
         const receivedState = JSON.parse(event.data);
-        // Stringify is a cheap way to do a deep compare for this app's state size
-        // This prevents an infinite loop of updates between tabs
         if (JSON.stringify(state) !== JSON.stringify(receivedState)) {
              setState(receivedState);
         }
@@ -239,7 +238,7 @@ export default function App() {
     return () => {
         channel.removeEventListener('message', handleMessage);
     };
-  }, [state]); // Re-subscribe if state setter changes to avoid stale closures
+  }, [state]);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (event: Event) => {
@@ -254,13 +253,14 @@ export default function App() {
     };
   }, []);
   
-  // Effect to save state to localStorage AND broadcast it
+  // Efeito para salvar o estado no DB e transmitir
   useEffect(() => {
+    if (isLoading) return; // Não salva o estado inicial antes de carregar do DB
+    saveStateToDB(state);
     const stateString = JSON.stringify(state);
-    localStorage.setItem('agendaLinkState', stateString);
-    channel.postMessage(stateString); // Broadcast state change to other tabs
+    channel.postMessage(stateString);
     applyBranding(state.settings.branding);
-  }, [state]);
+  }, [state, isLoading]);
 
   useEffect(() => {
     if (currentUser) {
@@ -339,14 +339,18 @@ export default function App() {
 
 
   const contextValue = useMemo(() => ({ state, setState, currentUser, login, logout, register, resetPassword }), [state, currentUser, login, logout, register, resetPassword, setState]);
+  
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   const isMaintenance = state.settings.maintenanceMode.enabled;
   const isAdmin = currentUser?.role === 'admin';
 
-  // NEW RENDER LOGIC: Wrap the entire application in the context provider.
-  // Then, conditionally render the correct view (Maintenance, Auth, or Main App).
-  // This ensures all components can access the context, fixing the lockout bug
-  // and enabling the secret admin login on the maintenance page.
   return (
     <AppContext.Provider value={contextValue}>
       {isMaintenance && !isAdmin ? (
@@ -357,7 +361,6 @@ export default function App() {
         <div className="min-h-screen font-sans text-gray-800 dark:text-gray-200">
           {!isOnline && <SyncStatusIndicator />}
           
-          {/* Admin-only banner to indicate maintenance mode is active */}
           {isMaintenance && isAdmin && (
               <div className="bg-yellow-400 text-yellow-900 text-center p-2 z-[100] flex items-center justify-center text-sm shadow-lg sticky top-0 font-semibold">
                   <AlertTriangleIcon className="h-5 w-5 mr-2" />
