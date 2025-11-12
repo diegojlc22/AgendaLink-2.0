@@ -17,7 +17,7 @@ const AppointmentManager: React.FC = () => {
         }));
     };
 
-    const sortedAppointments = [...appointments].sort((a,b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+    const sortedAppointments = [...(appointments || [])].sort((a,b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
 
     return (
         <div>
@@ -36,15 +36,26 @@ const AppointmentManager: React.FC = () => {
                     </thead>
                     <tbody>
                         {sortedAppointments.map(appt => {
+                            if (!appt || !appt.id) return null; // Prevent rendering malformed appointment objects
+
                             const client = clients.find(c => c.id === appt.clientId);
                             const service = services.find(s => s.id === appt.serviceId);
+                            
+                            const displayDate = appt.startTime && !isNaN(new Date(appt.startTime).getTime())
+                                ? new Date(appt.startTime).toLocaleString()
+                                : 'Data inválida';
+
+                            const displayPrice = typeof appt.finalPrice === 'number'
+                                ? `R$ ${appt.finalPrice.toFixed(2)}`
+                                : 'N/A';
+
                             return (
                                 <tr key={appt.id} className="border-b border-gray-200 dark:border-gray-700">
-                                    <td className="px-5 py-5 bg-white dark:bg-gray-800 text-sm">{client?.name}</td>
-                                    <td className="px-5 py-5 bg-white dark:bg-gray-800 text-sm">{service?.name}</td>
-                                    <td className="px-5 py-5 bg-white dark:bg-gray-800 text-sm">{new Date(appt.startTime).toLocaleString()}</td>
-                                    <td className="px-5 py-5 bg-white dark:bg-gray-800 text-sm font-semibold">R$ {appt.finalPrice.toFixed(2)}</td>
-                                    <td className="px-5 py-5 bg-white dark:bg-gray-800 text-sm">{appt.status}</td>
+                                    <td className="px-5 py-5 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100">{client?.name || 'Cliente Apagado'}</td>
+                                    <td className="px-5 py-5 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100">{service?.name || 'Serviço Apagado'}</td>
+                                    <td className="px-5 py-5 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100">{displayDate}</td>
+                                    <td className="px-5 py-5 bg-white dark:bg-gray-800 text-sm font-semibold text-gray-900 dark:text-gray-100">{displayPrice}</td>
+                                    <td className="px-5 py-5 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100">{appt.status || 'Status inválido'}</td>
                                     <td className="px-5 py-5 bg-white dark:bg-gray-800 text-sm">
                                         {appt.status === AppointmentStatus.Pending && (
                                             <div className="flex space-x-2">
