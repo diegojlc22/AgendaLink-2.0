@@ -58,7 +58,7 @@ const PromotionCard: React.FC<{ promotion: Promotion }> = ({ promotion }) => {
   const applicableServices = state.services.filter(s => promotion.serviceIds.includes(s.id));
 
   return (
-    <div className="bg-gradient-to-br from-indigo-50 to-pink-50 dark:from-gray-800 dark:to-gray-900 rounded-lg shadow-lg p-6 border-l-4 border-secondary">
+    <div className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-800 dark:to-gray-900 rounded-xl shadow-lg p-6 border-l-4 border-secondary">
       <h3 className="text-2xl font-bold text-secondary">{promotion.title}</h3>
       <p className="text-gray-600 dark:text-gray-300 mt-2">{promotion.description}</p>
       <div className="mt-4">

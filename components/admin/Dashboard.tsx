@@ -1,11 +1,10 @@
-
 import React, { useMemo } from 'react';
 import { useAppContext } from '../../App';
 import { AppointmentStatus } from '../../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const StatCard: React.FC<{ title: string; value: string; color: string }> = ({ title, value, color }) => (
-  <div className={`bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md border-l-4 ${color}`}>
+  <div className={`bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg border-t-4 ${color}`}>
     <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</h3>
     <p className="text-3xl font-bold text-gray-900 dark:text-white mt-1">{value}</p>
   </div>
@@ -54,7 +53,7 @@ const Dashboard: React.FC = () => {
     }, [appointments]);
 
 
-    const PIE_COLORS = ['#6366f1', '#ec4899', '#fbbf24', '#22c55e', '#3b82f6'];
+    const PIE_COLORS = ['#d81b60', '#8e24aa', '#ffb300', '#22c55e', '#3b82f6'];
 
     return (
         <div>
@@ -66,20 +65,20 @@ const Dashboard: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
                     <h3 className="text-lg font-semibold mb-4">Receita Mensal</h3>
                     <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={monthlyRevenue}>
-                            <CartesianGrid strokeDasharray="3 3" />
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.2)" />
                             <XAxis dataKey="name" />
                             <YAxis />
-                            <Tooltip />
+                            <Tooltip wrapperClassName="!bg-white dark:!bg-gray-700 !border-gray-300 dark:!border-gray-600 !rounded-lg" />
                             <Legend />
                             <Bar dataKey="revenue" fill="rgb(var(--color-primary))" />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
                     <h3 className="text-lg font-semibold mb-4">Serviços Populares</h3>
                     <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
@@ -88,7 +87,7 @@ const Dashboard: React.FC = () => {
                                     <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                                 ))}
                             </Pie>
-                            <Tooltip />
+                             <Tooltip wrapperClassName="!bg-white dark:!bg-gray-700 !border-gray-300 dark:!border-gray-600 !rounded-lg" />
                         </PieChart>
                     </ResponsiveContainer>
                 </div>

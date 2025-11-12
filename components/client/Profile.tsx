@@ -52,20 +52,20 @@ const Profile: React.FC = () => {
         </button>
       </div>
       
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg mb-8">
         <h3 className="text-xl font-bold mb-4">Informações Pessoais</h3>
         <p><strong>Nome:</strong> {client.name}</p>
         <p><strong>Email:</strong> {client.email}</p>
         <p><strong>Telefone:</strong> {client.phone}</p>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg mb-8">
         <h3 className="text-xl font-bold mb-4">Alterar Senha</h3>
         <form onSubmit={(e) => { e.preventDefault(); alert('Senha alterada (simulação)!'); }}>
           <div className="space-y-4">
-            <input type="password" placeholder="Senha Atual" className="w-full p-2 border rounded-md bg-white text-gray-900" required />
-            <input type="password" placeholder="Nova Senha" className="w-full p-2 border rounded-md bg-white text-gray-900" required />
-            <input type="password" placeholder="Confirmar Nova Senha" className="w-full p-2 border rounded-md bg-white text-gray-900" required />
+            <input type="password" placeholder="Senha Atual" className="w-full p-2 border rounded-lg bg-white text-gray-900 dark:bg-gray-700 dark:text-white" required />
+            <input type="password" placeholder="Nova Senha" className="w-full p-2 border rounded-lg bg-white text-gray-900 dark:bg-gray-700 dark:text-white" required />
+            <input type="password" placeholder="Confirmar Nova Senha" className="w-full p-2 border rounded-lg bg-white text-gray-900 dark:bg-gray-700 dark:text-white" required />
           </div>
           <button type="submit" className="mt-4 btn-secondary text-white font-bold py-2 px-4 rounded-lg">
             Salvar Nova Senha
@@ -73,7 +73,7 @@ const Profile: React.FC = () => {
         </form>
       </div>
 
-      <div className="p-6 rounded-lg">
+      <div className="p-6 rounded-xl">
         <h3 className="text-2xl font-bold mb-4">Histórico de Agendamentos</h3>
         <div className="space-y-4">
             {clientAppointments.length > 0 ? (

@@ -22,25 +22,25 @@ const BrandingSettingsEditor: React.FC = () => {
         <div className="space-y-4">
             <h3 className="text-xl font-bold">Branding</h3>
             <div>
-                <label>Nome do App</label>
-                <input value={branding.appName} onChange={(e) => handleBrandingChange('appName', e.target.value)} className="w-full p-2 border rounded bg-white text-gray-900" />
+                <label className="font-medium text-sm">Nome do App</label>
+                <input value={branding.appName} onChange={(e) => handleBrandingChange('appName', e.target.value)} className="w-full p-2 mt-1 border rounded-lg bg-white text-gray-900 dark:bg-gray-700 dark:text-white" />
             </div>
             <div>
-                <label>URL do Logo</label>
-                <input value={branding.logoUrl} onChange={(e) => handleBrandingChange('logoUrl', e.target.value)} className="w-full p-2 border rounded bg-white text-gray-900" />
+                <label className="font-medium text-sm">URL do Logo</label>
+                <input value={branding.logoUrl} onChange={(e) => handleBrandingChange('logoUrl', e.target.value)} className="w-full p-2 mt-1 border rounded-lg bg-white text-gray-900 dark:bg-gray-700 dark:text-white" />
             </div>
             <div className="flex gap-4">
                 <div>
-                    <label>Cor Primária</label>
-                    <input type="color" value={branding.colors.primary} onChange={e => handleColorChange('primary', e.target.value)} className="w-full h-10 p-1 border rounded" />
+                    <label className="font-medium text-sm">Cor Primária</label>
+                    <input type="color" value={branding.colors.primary} onChange={e => handleColorChange('primary', e.target.value)} className="w-full h-10 p-1 border rounded-lg" />
                 </div>
                  <div>
-                    <label>Cor Secundária</label>
-                    <input type="color" value={branding.colors.secondary} onChange={e => handleColorChange('secondary', e.target.value)} className="w-full h-10 p-1 border rounded" />
+                    <label className="font-medium text-sm">Cor Secundária</label>
+                    <input type="color" value={branding.colors.secondary} onChange={e => handleColorChange('secondary', e.target.value)} className="w-full h-10 p-1 border rounded-lg" />
                 </div>
                  <div>
-                    <label>Cor de Destaque</label>
-                    <input type="color" value={branding.colors.accent} onChange={e => handleColorChange('accent', e.target.value)} className="w-full h-10 p-1 border rounded" />
+                    <label className="font-medium text-sm">Cor de Destaque</label>
+                    <input type="color" value={branding.colors.accent} onChange={e => handleColorChange('accent', e.target.value)} className="w-full h-10 p-1 border rounded-lg" />
                 </div>
             </div>
         </div>
@@ -98,10 +98,10 @@ const PixSettingsEditor: React.FC = () => {
     return (
         <div className="space-y-4">
             <h3 className="text-xl font-bold">Configuração PIX</h3>
-            <p className="text-sm text-gray-500">Cadastre a chave PIX que será usada para gerar os QR Codes de pagamento.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Cadastre a chave PIX que será usada para gerar os QR Codes de pagamento.</p>
             <div>
-                <label>Tipo de Chave</label>
-                <select value={keyType} onChange={(e) => { setKeyType(e.target.value as PixKeyType); setKeyValue(''); }} className="w-full p-2 border rounded bg-white text-gray-900">
+                <label className="font-medium text-sm">Tipo de Chave</label>
+                <select value={keyType} onChange={(e) => { setKeyType(e.target.value as PixKeyType); setKeyValue(''); }} className="w-full p-2 mt-1 border rounded-lg bg-white text-gray-900 dark:bg-gray-700 dark:text-white">
                     <option value="">Selecione um tipo</option>
                     <option value="cpf">CPF</option>
                     <option value="celular">Celular</option>
@@ -111,19 +111,19 @@ const PixSettingsEditor: React.FC = () => {
             </div>
             {keyType && (
                 <div>
-                    <label>Chave PIX</label>
+                    <label className="font-medium text-sm">Chave PIX</label>
                     <input
                         {...getInputProps()}
                         value={keyValue}
                         onChange={handleKeyChange}
-                        className="w-full p-2 border rounded bg-white text-gray-900"
+                        className="w-full p-2 mt-1 border rounded-lg bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
                         required
                     />
                      {keyType === 'celular' && <p className="text-xs text-gray-400 mt-1">Insira o DDD + número. O formato `+55` será adicionado para o pagamento.</p>}
                 </div>
             )}
             <div className="flex justify-end">
-                <button onClick={handleSave} disabled={!keyType || !keyValue} className="btn-primary text-white font-bold py-2 px-4 rounded disabled:bg-gray-400">
+                <button onClick={handleSave} disabled={!keyType || !keyValue} className="btn-primary text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-400">
                     Salvar Chave PIX
                 </button>
             </div>
@@ -164,8 +164,8 @@ const BackupManager: React.FC = () => {
         <div className="space-y-4">
             <h3 className="text-xl font-bold">Backup e Restauração</h3>
             <div className="flex gap-4">
-                <button onClick={handleExport} className="btn-secondary text-white font-bold py-2 px-4 rounded">Exportar Dados (JSON)</button>
-                <label className="btn-primary text-white font-bold py-2 px-4 rounded cursor-pointer">
+                <button onClick={handleExport} className="btn-secondary text-white font-bold py-2 px-4 rounded-lg">Exportar Dados (JSON)</button>
+                <label className="btn-primary text-white font-bold py-2 px-4 rounded-lg cursor-pointer">
                     Importar Dados (JSON)
                     <input type="file" accept=".json" onChange={handleImport} className="hidden" />
                 </label>
@@ -197,14 +197,14 @@ const MaintenanceModeManager: React.FC = () => {
             <h3 className="text-xl font-bold">Modo Manutenção</h3>
             <div className="flex items-center space-x-4">
                 <label className="font-semibold">Ativar Modo Manutenção:</label>
-                <button onClick={toggleMaintenance} className={`px-4 py-2 rounded font-bold ${maintenanceMode.enabled ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`}>
+                <button onClick={toggleMaintenance} className={`px-4 py-2 rounded-lg font-bold ${maintenanceMode.enabled ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`}>
                     {maintenanceMode.enabled ? 'Desativar' : 'Ativar'}
                 </button>
             </div>
             {maintenanceMode.enabled && (
                 <div>
-                    <label>Mensagem de Manutenção</label>
-                    <input value={maintenanceMode.message} onChange={e => handleMessageChange(e.target.value)} className="w-full p-2 border rounded bg-white text-gray-900" />
+                    <label className="font-medium text-sm">Mensagem de Manutenção</label>
+                    <input value={maintenanceMode.message} onChange={e => handleMessageChange(e.target.value)} className="w-full p-2 mt-1 border rounded-lg bg-white text-gray-900 dark:bg-gray-700 dark:text-white" />
                 </div>
             )}
         </div>
@@ -217,16 +217,16 @@ const SettingsManager: React.FC = () => {
         <div>
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Configurações</h2>
             <div className="space-y-8">
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
                     <BrandingSettingsEditor />
                 </div>
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
                     <PixSettingsEditor />
                 </div>
-                 <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                 <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
                     <MaintenanceModeManager />
                 </div>
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
                     <BackupManager />
                 </div>
             </div>

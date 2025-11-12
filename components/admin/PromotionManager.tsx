@@ -48,32 +48,32 @@ const PromotionForm: React.FC<{ promotion?: Promotion; services: Service[]; onSa
     };
 
     return (
-        <form onSubmit={handleSubmit} className="p-6 bg-gray-50 dark:bg-gray-700 rounded-lg space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg space-y-4">
             <h3 className="text-xl font-bold">{promotion ? 'Editar' : 'Criar'} Promoção</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input name="title" value={formData.title} onChange={handleChange} placeholder="Título da Promoção" className="w-full p-2 border rounded bg-white text-gray-900" required />
-                <input name="promoCode" value={formData.promoCode} onChange={handleChange} placeholder="Código Promocional (opcional)" className="w-full p-2 border rounded bg-white text-gray-900" />
+                <input name="title" value={formData.title} onChange={handleChange} placeholder="Título da Promoção" className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white" required />
+                <input name="promoCode" value={formData.promoCode} onChange={handleChange} placeholder="Código Promocional (opcional)" className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
             </div>
-            <textarea name="description" value={formData.description} onChange={handleChange} placeholder="Descrição" className="w-full p-2 border rounded bg-white text-gray-900" required />
+            <textarea name="description" value={formData.description} onChange={handleChange} placeholder="Descrição" className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white" required />
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <select name="type" value={formData.type} onChange={handleChange} className="w-full p-2 border rounded bg-white text-gray-900">
+                <select name="type" value={formData.type} onChange={handleChange} className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white">
                     <option value="percentage">Porcentagem (%)</option>
                     <option value="fixed">Valor Fixo (R$)</option>
                 </select>
-                <input name="value" value={formData.value} type="number" step="0.01" onChange={handleChange} placeholder="Valor do Desconto" className="w-full p-2 border rounded bg-white text-gray-900" required />
+                <input name="value" value={formData.value} type="number" step="0.01" onChange={handleChange} placeholder="Valor do Desconto" className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white" required />
             </div>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input name="startDate" value={formData.startDate} type="date" onChange={handleChange} className="w-full p-2 border rounded bg-white text-gray-900" required />
-                <input name="endDate" value={formData.endDate} type="date" onChange={handleChange} className="w-full p-2 border rounded bg-white text-gray-900" required />
+                <input name="startDate" value={formData.startDate} type="date" onChange={handleChange} className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white" required />
+                <input name="endDate" value={formData.endDate} type="date" onChange={handleChange} className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white" required />
             </div>
-            <input name="usageLimit" value={formData.usageLimit || ''} type="number" onChange={handleChange} placeholder="Limite de Usos (opcional)" className="w-full p-2 border rounded bg-white text-gray-900" />
+            <input name="usageLimit" value={formData.usageLimit || ''} type="number" onChange={handleChange} placeholder="Limite de Usos (opcional)" className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white" />
 
             <div>
                 <h4 className="font-semibold">Serviços Aplicáveis</h4>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2 max-h-32 overflow-y-auto p-2 border rounded">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2 max-h-32 overflow-y-auto p-2 border rounded-lg bg-gray-50 dark:bg-gray-900/50">
                     {services.map(service => (
-                        <label key={service.id} className="flex items-center space-x-2">
-                            <input type="checkbox" checked={formData.serviceIds.includes(service.id)} onChange={() => handleServiceChange(service.id)} />
+                        <label key={service.id} className="flex items-center space-x-2 p-1 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700">
+                            <input type="checkbox" checked={formData.serviceIds.includes(service.id)} onChange={() => handleServiceChange(service.id)} className="rounded text-primary focus:ring-primary"/>
                             <span>{service.name}</span>
                         </label>
                     ))}
@@ -81,13 +81,13 @@ const PromotionForm: React.FC<{ promotion?: Promotion; services: Service[]; onSa
             </div>
 
             <label className="flex items-center space-x-2">
-                <input name="isActive" type="checkbox" checked={formData.isActive} onChange={handleChange} />
+                <input name="isActive" type="checkbox" checked={formData.isActive} onChange={handleChange} className="rounded text-primary focus:ring-primary"/>
                 <span>Ativa</span>
             </label>
 
             <div className="flex justify-end space-x-2">
-                <button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-300 rounded">Cancelar</button>
-                <button type="submit" className="px-4 py-2 btn-primary text-white rounded">Salvar</button>
+                <button type="button" onClick={onCancel} className="px-4 py-2 bg-gray-200 dark:bg-gray-600 rounded-lg">Cancelar</button>
+                <button type="submit" className="px-4 py-2 btn-primary text-white rounded-lg">Salvar</button>
             </div>
         </form>
     );
@@ -123,7 +123,7 @@ const PromotionManager: React.FC = () => {
         <div>
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Gerenciar Promoções</h2>
-                <button onClick={() => setIsCreating(true)} className="btn-primary text-white font-bold py-2 px-4 rounded">Nova Promoção</button>
+                <button onClick={() => setIsCreating(true)} className="btn-primary text-white font-bold py-2 px-4 rounded-lg">Nova Promoção</button>
             </div>
 
             {(isCreating || editingPromotion) && (
@@ -139,15 +139,15 @@ const PromotionManager: React.FC = () => {
             
             <div className="space-y-4">
                 {state.promotions.map(promo => (
-                    <div key={promo.id} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow flex justify-between items-center">
+                    <div key={promo.id} className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-lg flex justify-between items-center">
                         <div>
                             <p className="font-bold">{promo.title} {promo.isActive ? <span className="text-xs text-green-500">(Ativa)</span> : <span className="text-xs text-red-500">(Inativa)</span>}</p>
-                            <p className="text-sm text-gray-500">{promo.promoCode ? `Código: ${promo.promoCode}` : 'Sem código'}</p>
-                            <p className="text-sm text-gray-500">Usos: {promo.uses}{promo.usageLimit ? ` / ${promo.usageLimit}` : ''}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">{promo.promoCode ? `Código: ${promo.promoCode}` : 'Sem código'}</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Usos: {promo.uses}{promo.usageLimit ? ` / ${promo.usageLimit}` : ''}</p>
                         </div>
                         <div className="flex space-x-2">
-                            <button onClick={() => setEditingPromotion(promo)} className="px-3 py-1 bg-yellow-400 text-white text-sm rounded">Editar</button>
-                            <button onClick={() => handleDelete(promo.id)} className="px-3 py-1 bg-red-500 text-white text-sm rounded">Excluir</button>
+                             <button onClick={() => setEditingPromotion(promo)} className="px-3 py-1 bg-accent text-gray-800 text-sm rounded-lg font-semibold">Editar</button>
+                            <button onClick={() => handleDelete(promo.id)} className="px-3 py-1 bg-red-500 text-white text-sm rounded-lg">Excluir</button>
                         </div>
                     </div>
                 ))}

@@ -198,7 +198,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
       : null;
 
   return (
-    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-2xl">
       <div className="flex justify-between items-center mb-6">
         <button onClick={onBack} className="text-primary hover:underline">
           &larr; Voltar
@@ -215,7 +215,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
               min={today.toISOString().split('T')[0]}
               value={selectedDate.toISOString().split('T')[0]}
               onChange={(e) => setSelectedDate(new Date(e.target.value + 'T00:00:00'))}
-              className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary bg-white dark:border-gray-600 text-gray-900"
+              className="mt-1 block w-full p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-primary focus:border-primary bg-white dark:bg-gray-700 dark:border-gray-600 text-gray-900 dark:text-white"
           />
       </div>
 
@@ -228,9 +228,9 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
               key={index}
               disabled={!available}
               onClick={() => setSelectedSlot(slot)}
-              className={`p-3 text-sm font-semibold rounded-lg transition-colors ${
+              className={`p-3 text-sm font-semibold rounded-lg transition-all duration-200 ${
                 available
-                  ? (selectedSlot?.getTime() === slot.getTime() ? 'bg-primary text-white' : 'bg-gray-200 dark:bg-gray-700 hover:bg-primary hover:text-white')
+                  ? (selectedSlot?.getTime() === slot.getTime() ? 'bg-primary text-white shadow-lg' : 'bg-gray-200 dark:bg-gray-700 hover:bg-primary/20 dark:hover:bg-primary/30')
                   : 'bg-gray-100 dark:bg-gray-900 text-gray-400 cursor-not-allowed line-through'
               }`}
             >
@@ -241,7 +241,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
       </div>
 
       {selectedSlot && (
-        <div className="mt-8 p-6 border-t-2 border-primary-light dark:border-gray-700">
+        <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
           <h3 className="text-xl font-bold">Confirmar Agendamento</h3>
           <p className="mt-2 text-gray-600 dark:text-gray-300">
             Você está agendando <span className="font-semibold text-primary">{service.name}</span> para o dia <span className="font-semibold">{selectedDate.toLocaleDateString()}</span> às <span className="font-semibold">{selectedSlot.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>.
@@ -256,7 +256,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
                       id="promo-code"
                       value={promoCode}
                       onChange={e => setPromoCode(e.target.value)}
-                      className="flex-grow p-2 border rounded-md bg-white text-gray-900"
+                      className="flex-grow p-2 border rounded-lg bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
                   />
                   <button onClick={handleApplyPromo} className="btn-secondary text-white font-bold py-2 px-4 rounded-lg">Aplicar</button>
               </div>
@@ -272,8 +272,8 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
           <div className="mt-4">
               <h4 className="font-semibold mb-2">Forma de Pagamento</h4>
               <div className="flex gap-4">
-                  <button onClick={() => setPaymentMethod('Local')} className={`p-3 rounded-lg border-2 ${paymentMethod === 'Local' ? 'border-primary' : 'border-gray-300'}`}>Pagar no Local</button>
-                  <button onClick={() => setPaymentMethod('Pix')} className={`p-3 rounded-lg border-2 ${paymentMethod === 'Pix' ? 'border-primary' : 'border-gray-300'}`}>PIX Online</button>
+                  <button onClick={() => setPaymentMethod('Local')} className={`p-3 rounded-lg border-2 transition-colors ${paymentMethod === 'Local' ? 'border-primary ring-2 ring-primary/50' : 'border-gray-300 dark:border-gray-600'}`}>Pagar no Local</button>
+                  <button onClick={() => setPaymentMethod('Pix')} className={`p-3 rounded-lg border-2 transition-colors ${paymentMethod === 'Pix' ? 'border-primary ring-2 ring-primary/50' : 'border-gray-300 dark:border-gray-600'}`}>PIX Online</button>
               </div>
           </div>
 
@@ -282,14 +282,14 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
                   {brCode ? (
                       <>
                           <p className="font-semibold mb-2">Pague com PIX para iniciar a confirmação</p>
-                          <img src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(brCode)}`} alt="QR Code PIX" className="mx-auto" />
-                          <p className="text-xs mt-2 text-gray-500">Aponte a câmera do seu celular para o QR Code.</p>
+                          <img src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(brCode)}`} alt="QR Code PIX" className="mx-auto rounded-lg" />
+                          <p className="text-xs mt-2 text-gray-500 dark:text-gray-400">Aponte a câmera do seu celular para o QR Code.</p>
                           <div className="mt-4">
                               <label className="text-sm font-semibold">PIX Copia e Cola:</label>
                               <textarea
                                   readOnly
                                   value={brCode}
-                                  className="w-full p-2 mt-1 text-xs bg-white dark:bg-gray-800 border rounded"
+                                  className="w-full p-2 mt-1 text-xs bg-white dark:bg-gray-800 border rounded-lg"
                                   rows={3}
                                   onClick={(e) => (e.target as HTMLTextAreaElement).select()}
                               />
@@ -298,12 +298,12 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
                                       navigator.clipboard.writeText(brCode);
                                       alert('Código PIX copiado!');
                                   }}
-                                  className="mt-2 text-sm btn-secondary text-white font-bold py-1 px-3 rounded"
+                                  className="mt-2 text-sm btn-secondary text-white font-bold py-1 px-3 rounded-lg"
                               >
                                   Copiar Código
                               </button>
                           </div>
-                          <p className="text-xs mt-4 text-gray-500">Após o pagamento, seu agendamento será confirmado pelo administrador.</p>
+                          <p className="text-xs mt-4 text-gray-500 dark:text-gray-400">Após o pagamento, seu agendamento será confirmado pelo administrador.</p>
                       </>
                   ) : (
                       <p className="text-red-500 font-semibold">A chave PIX não foi configurada pelo administrador. Não é possível continuar.</p>
