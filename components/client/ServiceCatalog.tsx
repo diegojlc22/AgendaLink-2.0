@@ -60,7 +60,7 @@ const ServiceCatalog: React.FC = () => {
             placeholder="Buscar serviço..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className="flex-grow p-2 bg-transparent border-none focus:ring-0 dark:text-white"
+            className="flex-grow p-2 bg-white border-none focus:ring-0 text-gray-900"
           />
           <div className="flex items-center bg-gray-100 dark:bg-gray-700 rounded-md">
             {categories.map(cat => (

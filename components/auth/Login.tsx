@@ -46,7 +46,7 @@ const Login: React.FC<LoginProps> = ({ onSwitchToRegister, onSwitchToForgotPassw
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-primary focus:border-primary"
+              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm bg-white dark:border-gray-600 focus:outline-none focus:ring-primary focus:border-primary text-gray-900"
               placeholder="seu@email.com"
             />
           </div>
@@ -74,7 +74,7 @@ const Login: React.FC<LoginProps> = ({ onSwitchToRegister, onSwitchToForgotPassw
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-primary focus:border-primary"
+              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm bg-white dark:border-gray-600 focus:outline-none focus:ring-primary focus:border-primary text-gray-900"
               placeholder="********"
             />
           </div>

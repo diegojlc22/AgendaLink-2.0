@@ -147,7 +147,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
               min={today.toISOString().split('T')[0]}
               value={selectedDate.toISOString().split('T')[0]}
               onChange={(e) => setSelectedDate(new Date(e.target.value + 'T00:00:00'))}
-              className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary dark:bg-gray-700 dark:border-gray-600"
+              className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-primary focus:border-primary bg-white dark:border-gray-600 text-gray-900"
           />
       </div>
 
@@ -188,7 +188,7 @@ const BookingCalendar: React.FC<BookingCalendarProps> = ({ service, onBack }) =>
                       id="promo-code"
                       value={promoCode}
                       onChange={e => setPromoCode(e.target.value)}
-                      className="flex-grow p-2 border rounded-md dark:bg-gray-700"
+                      className="flex-grow p-2 border rounded-md bg-white text-gray-900"
                   />
                   <button onClick={handleApplyPromo} className="btn-secondary text-white font-bold py-2 px-4 rounded-lg">Aplicar</button>
               </div>

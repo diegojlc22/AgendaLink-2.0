@@ -34,11 +34,11 @@ const ServiceForm: React.FC<{ service?: Service; onSave: (service: Service) => v
 
     return (
         <form onSubmit={handleSubmit} className="p-6 bg-gray-50 dark:bg-gray-700 rounded-lg space-y-4">
-            <input name="name" value={formData.name} onChange={handleChange} placeholder="Nome do Serviço" className="w-full p-2 border rounded" required />
-            <textarea name="description" value={formData.description} onChange={handleChange} placeholder="Descrição" className="w-full p-2 border rounded" required />
-            <input name="price" value={formData.price} type="number" onChange={handleChange} placeholder="Preço" className="w-full p-2 border rounded" required />
-            <input name="duration" value={formData.duration} type="number" step="5" onChange={handleChange} placeholder="Duração (minutos)" className="w-full p-2 border rounded" required />
-            <input name="category" value={formData.category} onChange={handleChange} placeholder="Categoria" className="w-full p-2 border rounded" required />
+            <input name="name" value={formData.name} onChange={handleChange} placeholder="Nome do Serviço" className="w-full p-2 border rounded bg-white text-gray-900" required />
+            <textarea name="description" value={formData.description} onChange={handleChange} placeholder="Descrição" className="w-full p-2 border rounded bg-white text-gray-900" required />
+            <input name="price" value={formData.price} type="number" onChange={handleChange} placeholder="Preço" className="w-full p-2 border rounded bg-white text-gray-900" required />
+            <input name="duration" value={formData.duration} type="number" step="5" onChange={handleChange} placeholder="Duração (minutos)" className="w-full p-2 border rounded bg-white text-gray-900" required />
+            <input name="category" value={formData.category} onChange={handleChange} placeholder="Categoria" className="w-full p-2 border rounded bg-white text-gray-900" required />
             <label className="flex items-center space-x-2">
                 <input name="isFeatured" type="checkbox" checked={formData.isFeatured} onChange={handleChange} />
                 <span>Destaque</span>

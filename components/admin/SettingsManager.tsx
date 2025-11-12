@@ -24,11 +24,11 @@ const BrandingSettingsEditor: React.FC = () => {
             <h3 className="text-xl font-bold">Branding</h3>
             <div>
                 <label>Nome do App</label>
-                <input value={branding.appName} onChange={(e) => handleBrandingChange('appName', e.target.value)} className="w-full p-2 border rounded dark:bg-gray-700" />
+                <input value={branding.appName} onChange={(e) => handleBrandingChange('appName', e.target.value)} className="w-full p-2 border rounded bg-white text-gray-900" />
             </div>
             <div>
                 <label>URL do Logo</label>
-                <input value={branding.logoUrl} onChange={(e) => handleBrandingChange('logoUrl', e.target.value)} className="w-full p-2 border rounded dark:bg-gray-700" />
+                <input value={branding.logoUrl} onChange={(e) => handleBrandingChange('logoUrl', e.target.value)} className="w-full p-2 border rounded bg-white text-gray-900" />
             </div>
             <div className="flex gap-4">
                 <div>
@@ -53,8 +53,8 @@ const PixSettingsEditor: React.FC = () => {
         <div className="space-y-4">
             <h3 className="text-xl font-bold">Configuração PIX (Simulação)</h3>
             <p className="text-sm text-gray-500">Insira credenciais falsas para fins de demonstração.</p>
-            <input placeholder="API Key" className="w-full p-2 border rounded dark:bg-gray-700" />
-            <input placeholder="API Secret" className="w-full p-2 border rounded dark:bg-gray-700" />
+            <input placeholder="API Key" className="w-full p-2 border rounded bg-white text-gray-900" />
+            <input placeholder="API Secret" className="w-full p-2 border rounded bg-white text-gray-900" />
         </div>
     );
 };
@@ -132,7 +132,7 @@ const MaintenanceModeManager: React.FC = () => {
             {maintenanceMode.enabled && (
                 <div>
                     <label>Mensagem de Manutenção</label>
-                    <input value={maintenanceMode.message} onChange={e => handleMessageChange(e.target.value)} className="w-full p-2 border rounded dark:bg-gray-700" />
+                    <input value={maintenanceMode.message} onChange={e => handleMessageChange(e.target.value)} className="w-full p-2 border rounded bg-white text-gray-900" />
                 </div>
             )}
         </div>

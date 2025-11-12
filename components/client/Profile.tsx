@@ -63,9 +63,9 @@ const Profile: React.FC = () => {
         <h3 className="text-xl font-bold mb-4">Alterar Senha</h3>
         <form onSubmit={(e) => { e.preventDefault(); alert('Senha alterada (simulação)!'); }}>
           <div className="space-y-4">
-            <input type="password" placeholder="Senha Atual" className="w-full p-2 border rounded-md dark:bg-gray-700" required />
-            <input type="password" placeholder="Nova Senha" className="w-full p-2 border rounded-md dark:bg-gray-700" required />
-            <input type="password" placeholder="Confirmar Nova Senha" className="w-full p-2 border rounded-md dark:bg-gray-700" required />
+            <input type="password" placeholder="Senha Atual" className="w-full p-2 border rounded-md bg-white text-gray-900" required />
+            <input type="password" placeholder="Nova Senha" className="w-full p-2 border rounded-md bg-white text-gray-900" required />
+            <input type="password" placeholder="Confirmar Nova Senha" className="w-full p-2 border rounded-md bg-white text-gray-900" required />
           </div>
           <button type="submit" className="mt-4 btn-secondary text-white font-bold py-2 px-4 rounded-lg">
             Salvar Nova Senha

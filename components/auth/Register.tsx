@@ -43,7 +43,7 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
             <label htmlFor="name" className="text-sm font-medium text-gray-700 dark:text-gray-300">Nome Completo</label>
             <input
               id="name" name="name" type="text" required value={name} onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-primary focus:border-primary"
+              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm bg-white dark:border-gray-600 focus:outline-none focus:ring-primary focus:border-primary text-gray-900"
               placeholder="Seu Nome"
             />
           </div>
@@ -51,7 +51,7 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
             <label htmlFor="email" className="text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
             <input
               id="email" name="email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-primary focus:border-primary"
+              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm bg-white dark:border-gray-600 focus:outline-none focus:ring-primary focus:border-primary text-gray-900"
               placeholder="seu@email.com"
             />
           </div>
@@ -59,7 +59,7 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
             <label htmlFor="phone" className="text-sm font-medium text-gray-700 dark:text-gray-300">Telefone / WhatsApp</label>
             <input
               id="phone" name="phone" type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)}
-              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-primary focus:border-primary"
+              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm bg-white dark:border-gray-600 focus:outline-none focus:ring-primary focus:border-primary text-gray-900"
               placeholder="(99) 99999-9999"
             />
           </div>
@@ -67,7 +67,7 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
             <label htmlFor="password" className="text-sm font-medium text-gray-700 dark:text-gray-300">Senha</label>
             <input
               id="password" name="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-primary focus:border-primary"
+              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm bg-white dark:border-gray-600 focus:outline-none focus:ring-primary focus:border-primary text-gray-900"
               placeholder="********"
             />
           </div>

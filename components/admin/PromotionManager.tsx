@@ -51,22 +51,22 @@ const PromotionForm: React.FC<{ promotion?: Promotion; services: Service[]; onSa
         <form onSubmit={handleSubmit} className="p-6 bg-gray-50 dark:bg-gray-700 rounded-lg space-y-4">
             <h3 className="text-xl font-bold">{promotion ? 'Editar' : 'Criar'} Promoção</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input name="title" value={formData.title} onChange={handleChange} placeholder="Título da Promoção" className="w-full p-2 border rounded" required />
-                <input name="promoCode" value={formData.promoCode} onChange={handleChange} placeholder="Código Promocional (opcional)" className="w-full p-2 border rounded" />
+                <input name="title" value={formData.title} onChange={handleChange} placeholder="Título da Promoção" className="w-full p-2 border rounded bg-white text-gray-900" required />
+                <input name="promoCode" value={formData.promoCode} onChange={handleChange} placeholder="Código Promocional (opcional)" className="w-full p-2 border rounded bg-white text-gray-900" />
             </div>
-            <textarea name="description" value={formData.description} onChange={handleChange} placeholder="Descrição" className="w-full p-2 border rounded" required />
+            <textarea name="description" value={formData.description} onChange={handleChange} placeholder="Descrição" className="w-full p-2 border rounded bg-white text-gray-900" required />
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <select name="type" value={formData.type} onChange={handleChange} className="w-full p-2 border rounded">
+                <select name="type" value={formData.type} onChange={handleChange} className="w-full p-2 border rounded bg-white text-gray-900">
                     <option value="percentage">Porcentagem (%)</option>
                     <option value="fixed">Valor Fixo (R$)</option>
                 </select>
-                <input name="value" value={formData.value} type="number" step="0.01" onChange={handleChange} placeholder="Valor do Desconto" className="w-full p-2 border rounded" required />
+                <input name="value" value={formData.value} type="number" step="0.01" onChange={handleChange} placeholder="Valor do Desconto" className="w-full p-2 border rounded bg-white text-gray-900" required />
             </div>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input name="startDate" value={formData.startDate} type="date" onChange={handleChange} className="w-full p-2 border rounded" required />
-                <input name="endDate" value={formData.endDate} type="date" onChange={handleChange} className="w-full p-2 border rounded" required />
+                <input name="startDate" value={formData.startDate} type="date" onChange={handleChange} className="w-full p-2 border rounded bg-white text-gray-900" required />
+                <input name="endDate" value={formData.endDate} type="date" onChange={handleChange} className="w-full p-2 border rounded bg-white text-gray-900" required />
             </div>
-            <input name="usageLimit" value={formData.usageLimit || ''} type="number" onChange={handleChange} placeholder="Limite de Usos (opcional)" className="w-full p-2 border rounded" />
+            <input name="usageLimit" value={formData.usageLimit || ''} type="number" onChange={handleChange} placeholder="Limite de Usos (opcional)" className="w-full p-2 border rounded bg-white text-gray-900" />
 
             <div>
                 <h4 className="font-semibold">Serviços Aplicáveis</h4>

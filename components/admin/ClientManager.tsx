@@ -80,7 +80,7 @@ const ClientManager: React.FC = () => {
                                 value={selectedClient.notes || ''}
                                 onChange={(e) => handleNoteChange(selectedClient.id, e.target.value)}
                                 rows={4}
-                                className="w-full p-2 border rounded mt-1 dark:bg-gray-700"
+                                className="w-full p-2 border rounded mt-1 bg-white text-gray-900"
                                 placeholder="Adicione notas sobre o cliente..."
                             />
                         </div>
