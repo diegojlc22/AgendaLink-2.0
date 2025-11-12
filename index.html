@@ -1,0 +1,62 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AgendaLink 2.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#ffffff" />
+    <style>
+      :root {
+        --color-primary: 99 102 241;
+        --color-secondary: 236 72 153;
+        --color-accent: 251 191 36;
+      }
+      .bg-primary { background-color: rgb(var(--color-primary)); }
+      .text-primary { color: rgb(var(--color-primary)); }
+      .border-primary { border-color: rgb(var(--color-primary)); }
+      .ring-primary { --tw-ring-color: rgb(var(--color-primary)); }
+      .hover\:bg-primary-dark:hover { background-color: rgb(var(--color-primary) / 0.9); }
+
+      .bg-secondary { background-color: rgb(var(--color-secondary)); }
+      .text-secondary { color: rgb(var(--color-secondary)); }
+      .border-secondary { border-color: rgb(var(--color-secondary)); }
+      .hover\:bg-secondary-dark:hover { background-color: rgb(var(--color-secondary) / 0.9); }
+      
+      .bg-accent { background-color: rgb(var(--color-accent)); }
+      .text-accent { color: rgb(var(--color-accent)); }
+      .border-accent { border-color: rgb(var(--color-accent)); }
+
+      .btn-primary {
+        background-color: rgb(var(--color-primary));
+        color: white;
+      }
+      .btn-primary:hover {
+        background-color: rgb(var(--color-primary) / 0.9);
+      }
+      .btn-secondary {
+        background-color: rgb(var(--color-secondary));
+        color: white;
+      }
+      .btn-secondary:hover {
+        background-color: rgb(var(--color-secondary) / 0.9);
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "recharts": "https://aistudiocdn.com/recharts@^3.4.1"
+  }
+}
+</script>
+</head>
+  <body class="bg-gray-100 dark:bg-gray-900">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
