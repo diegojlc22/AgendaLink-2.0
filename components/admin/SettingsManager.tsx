@@ -203,15 +203,13 @@ const DataManagement: React.FC = () => {
                 return;
             }
             
-            // This is the state we want after a hard reset.
-            // Only the default admin and default settings. Everything else is empty.
             const resetState: AppState = {
-                ...INITIAL_APP_STATE, // Use initial state as a base for settings
+                settings: INITIAL_APP_STATE.settings,
+                clients: [adminUser],
                 services: [],
                 appointments: [],
                 promotions: [],
                 pixTransactions: [],
-                clients: [adminUser], // And only the admin client
             };
 
             saveStateToDB(resetState); // Overwrite database with clean state
