@@ -1,4 +1,4 @@
-export const generateBRCode = (pixKey: string, amount: number, merchantName: string, merchantCity: string, txid: string = '***') => {
+export const generateBRCode = (pixKey: string, amount: number, merchantName: string, merchantCity: string, txid: string = 'AGENDALINK') => {
     const payloadFormatIndicator = '000201';
     
     const merchantAccountInfo = [
@@ -13,7 +13,12 @@ export const generateBRCode = (pixKey: string, amount: number, merchantName: str
     const countryCode = '5802BR';
     const merchantNameField = `59${String(merchantName.length).padStart(2, '0')}${merchantName}`;
     const merchantCityField = `60${String(merchantCity.length).padStart(2, '0')}${merchantCity}`;
-    const additionalDataField = `62070503${txid}`;
+    
+    // Reference Label (TXID) - Dynamically calculated
+    const referenceLabel = `05${String(txid.length).padStart(2, '0')}${txid}`;
+    
+    // Additional Data Field - Dynamically calculated
+    const additionalDataField = `62${String(referenceLabel.length).padStart(2, '0')}${referenceLabel}`;
 
     const payload = [
         payloadFormatIndicator,
