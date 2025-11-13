@@ -50,6 +50,15 @@ Leve seu negócio para o próximo nível com funcionalidades de aplicativos nati
 
 ---
 
+### ⚠️ Limitação da Simulação de Sincronização
+É importante notar que, para fins de demonstração, o backend é simulado usando o `localStorage` do navegador. Isso permite que a aplicação funcione de forma autônoma sem a necessidade de configurar um servidor.
+
+No entanto, o `localStorage` é isolado para cada navegador. **Isso significa que a sincronização de dados não ocorrerá entre navegadores diferentes (por exemplo, ao fazer uma alteração no Chrome, ela não aparecerá no Firefox).** A sincronização em tempo real funcionará perfeitamente entre múltiplas abas *do mesmo navegador*.
+
+Para obter sincronização entre dispositivos e navegadores, o mock de API em `services/api.ts` precisaria ser substituído por uma integração com um backend real.
+
+---
+
 ## 🛠️ Tecnologias Utilizadas
 
 - **React:** Para uma interface de usuário reativa e moderna.

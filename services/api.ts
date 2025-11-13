@@ -1,3 +1,18 @@
+// ====================================================================================
+// !! IMPORTANTE: MOCK DE SERVIDOR !!
+// ====================================================================================
+// Este arquivo simula um backend para fins de demonstração.
+// Ele usa o `localStorage` do navegador para persistir os dados.
+//
+// **LIMITAÇÃO CONHECIDA:** O `localStorage` é isolado por navegador.
+// Isso significa que os dados não serão sincronizados entre navegadores diferentes
+// (ex: Chrome e Firefox) ou entre abas anônimas e normais. A sincronização em
+// tempo real funcionará perfeitamente entre múltiplas abas *do mesmo navegador*.
+//
+// Em um ambiente de produção, este arquivo seria substituído por chamadas de API
+// a um servidor real (ex: Node.js, Python, etc.) com um banco de dados central.
+// ====================================================================================
+
 import { AppState, Service, Promotion, Appointment, AppointmentStatus, Client, BrandingSettings, AppSettings } from '../types';
 import { INITIAL_APP_STATE } from '../constants';
 
