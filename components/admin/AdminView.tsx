@@ -1,3 +1,4 @@
+
 import React, { useState, lazy, Suspense } from 'react';
 import { CalendarIcon, CogIcon, DashboardIcon, TagIcon, UsersIcon, PercentageIcon, MenuIcon, XIcon } from '../common/Icons';
 import { useAppContext } from '../../App';
@@ -27,7 +28,7 @@ const AdminSidebar: React.FC<{
     isOpen: boolean;
     setIsOpen: (isOpen: boolean) => void;
 }> = ({ activeSection, setActiveSection, isOpen, setIsOpen }) => {
-    const { logout, state } = useAppContext();
+    const { logout, state, setIsAdminView } = useAppContext();
 
     const NavItem: React.FC<{ section: AdminSection; label: string; icon: React.ReactNode }> = ({ section, label, icon }) => (
         <li>
@@ -67,6 +68,17 @@ const AdminSidebar: React.FC<{
                     <NavItem section="settings" label="Configurações" icon={<CogIcon className="h-6 w-6" />} />
                 </ul>
             </nav>
+            <div className="px-4 py-2">
+                <button
+                    onClick={() => setIsAdminView(false)}
+                    className="flex items-center w-full p-3 space-x-3 rounded-lg text-gray-300 hover:bg-gray-700 transition-colors duration-200"
+                    title="Ver como Cliente"
+                    aria-label="Ver como Cliente"
+                >
+                    <UsersIcon className="h-6 w-6" />
+                    <span className="font-medium">Ver como Cliente</span>
+                </button>
+            </div>
             <div className="p-4 border-t border-gray-700">
                 <button
                     onClick={logout}

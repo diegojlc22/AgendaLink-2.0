@@ -1,3 +1,4 @@
+
 import React, { useState, createContext, useContext, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { AppState, BrandingSettings, Client } from './types';
 import { INITIAL_APP_STATE } from './constants';
@@ -369,14 +370,15 @@ export default function App() {
             
             {installPromptEvent && !isAdminView && <PWAInstallPrompt onInstall={handleInstallClick} />}
 
-            {currentUser.role === 'admin' && (
+            {currentUser.role === 'admin' && !isAdminView && (
               <button
-                onClick={() => setIsAdminView(!isAdminView)}
-                className="fixed bottom-20 left-4 z-50 bg-secondary text-white p-4 rounded-full shadow-lg hover:bg-secondary-dark transition-all duration-300 transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary"
-                aria-label={isAdminView ? "Ver como Cliente" : "Voltar ao Painel do Admin"}
-                title={isAdminView ? "Ver como Cliente" : "Voltar ao Painel do Admin"}
+                onClick={() => setIsAdminView(true)}
+                className="fixed bottom-20 left-4 z-50 bg-secondary text-white pl-3 pr-4 py-3 rounded-full shadow-lg hover:bg-secondary-dark transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary flex items-center gap-2"
+                aria-label="Voltar ao Painel do Admin"
+                title="Voltar ao Painel do Admin"
               >
-                {isAdminView ? <UsersIcon className="h-6 w-6" /> : <ShieldCheckIcon className="h-6 w-6" />}
+                <ShieldCheckIcon className="h-6 w-6" />
+                <span className="font-semibold text-sm">Voltar ao Admin</span>
               </button>
             )}
           </div>
