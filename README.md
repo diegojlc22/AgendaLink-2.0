@@ -42,7 +42,7 @@ Leve seu negócio para o próximo nível com funcionalidades de aplicativos nati
 
 - **Instalável:** Adicione o AgendaLink à tela inicial do seu celular ou desktop com um único clique.
 - **Funciona Offline com Banco de Dados Real:** O aplicativo carrega instantaneamente e funciona offline de forma robusta, salvando todos os dados em um banco de dados **SQLite** no navegador. Um **indicador visual** informa ao usuário quando a conexão é perdida.
-- **Sincronização em Tempo Real entre Abas:** Abra o aplicativo em várias abas e veja as alterações refletidas instantaneamente em todas elas, sem precisar recarregar a página.
+- **Sincronização em Tempo Real entre Dispositivos:** As alterações são refletidas instantaneamente em todos os dispositivos conectados graças a um backend com WebSockets.
 - **Notificações Push:** Envie lembretes de agendamento e promoções diretamente para os dispositivos dos seus clientes (requer backend).
 - **Atalhos Rápidos:** Acesse seções como "Agendar" e "Minha Conta" diretamente do ícone do app.
 - **Experiência Imersiva:** Uma vez instalado, o app roda em tela cheia, sem a barra de endereço do navegador.
@@ -50,32 +50,31 @@ Leve seu negócio para o próximo nível com funcionalidades de aplicativos nati
 
 ---
 
-### ⚠️ Limitação da Simulação de Sincronização
-É importante notar que, para fins de demonstração, o backend é simulado usando o `localStorage` do navegador. Isso permite que a aplicação funcione de forma autônoma sem a necessidade de configurar um servidor.
-
-No entanto, o `localStorage` é isolado para cada navegador. **Isso significa que a sincronização de dados não ocorrerá entre navegadores diferentes (por exemplo, ao fazer uma alteração no Chrome, ela não aparecerá no Firefox).** A sincronização em tempo real funcionará perfeitamente entre múltiplas abas *do mesmo navegador*.
-
-Para obter sincronização entre dispositivos e navegadores, o mock de API em `services/api.ts` precisaria ser substituído por uma integração com um backend real.
-
----
-
 ## 🛠️ Tecnologias Utilizadas
 
+### Frontend
 - **React:** Para uma interface de usuário reativa e moderna.
 - **TypeScript:** Para um código mais seguro e manutenível.
-- **SQLite (via sql.js):** Para um banco de dados robusto e confiável que funciona 100% offline no navegador, substituindo o `localStorage`.
+- **SQLite (via sql.js):** Para um banco de dados robusto no navegador que garante o funcionamento offline.
 - **Tailwind CSS:** Para estilização rápida e responsiva.
 - **Recharts:** Para a criação de gráficos interativos no dashboard.
 - **Service Workers:** Para habilitar o cache, o funcionamento offline e as notificações.
 - **Web App Manifest:** Para garantir a experiência de instalação e a aparência nativa.
 
+### Backend (Arquitetura Recomendada)
+- **Node.js com Express.js:** Para um servidor leve, rápido e baseado em JavaScript.
+- **PostgreSQL:** Como banco de dados relacional, robusto e escalável.
+- **Prisma:** ORM moderno para interagir com o banco de dados de forma segura.
+- **Socket.IO:** Para comunicação em tempo real via WebSockets.
+- **JWT (JSON Web Tokens) & bcrypt:** Para autenticação e segurança de senhas.
+
 ---
 
-## 🚀 Como Rodar o Projeto Localmente
+## 🚀 Como Rodar o Projeto
 
-Rodar o sistema na sua máquina é muito simples e rápido. Você só precisa ter o **Node.js** instalado.
+Para rodar a aplicação completa, você precisa rodar o **Frontend** e o **Backend** separadamente.
 
-Siga os passos abaixo:
+### Rodando o Frontend (Este Projeto)
 
 1.  **Crie uma Pasta para o Projeto:**
     Crie uma nova pasta no seu computador e salve todos os arquivos do projeto dentro dela.
@@ -87,7 +86,7 @@ Siga os passos abaixo:
     cd caminho/para/a/pasta/do-projeto
     ```
 
-3.  **Inicie o Servidor de Desenvolvimento (Método Rápido):**
+3.  **Inicie o Servidor de Desenvolvimento:**
     Execute o seguinte comando no terminal. Ele irá baixar e rodar um servidor de desenvolvimento moderno (Vite) para você, sem precisar instalar nada permanentemente.
 
     ```bash
@@ -99,44 +98,42 @@ Siga os passos abaixo:
 
     `http://localhost:5173`
 
-    Pronto! O sistema estará rodando na sua máquina.
+    Pronto! O frontend estará rodando na sua máquina.
 
-### Se o Comando Acima Falhar (Método Alternativo e mais Robusto)
+### Rodando o Backend
 
-Às vezes, o comando `npx` pode falhar por problemas de cache ou permissão. Se isso acontecer, siga estes passos para uma instalação local mais garantida:
+Você precisará construir um servidor backend que siga a especificação de API descrita no arquivo `services/api.ts`.
 
-1.  **Inicialize um projeto Node.js:**
-    Ainda no terminal, dentro da pasta do projeto, execute:
+1.  **Crie seu projeto de backend:**
+    Siga as tecnologias recomendadas (Node.js, Express, Prisma) ou sua stack de preferência.
+
+2.  **Implemente os Endpoints:**
+    Crie as rotas e a lógica para cada função definida em `services/api.ts`.
+
+3.  **Configure o Banco de Dados:**
+    - Crie um banco de dados PostgreSQL.
+    - Configure a string de conexão no seu backend (ex: em um arquivo `.env`).
+
+4.  **Inicie o Servidor Backend:**
     ```bash
-    npm init -y
+    # Exemplo de comando
+    npm run dev
     ```
-    Isso criará um arquivo `package.json`.
-
-2.  **Instale o Vite localmente:**
-    Este comando vai criar uma pasta `node_modules` e instalar o Vite dentro dela, especificamente para este projeto.
-    ```bash
-    npm install vite
-    ```
-
-3.  **Rode o Vite Novamente:**
-    Agora, o mesmo comando de antes funcionará, pois ele encontrará o Vite que acabamos de instalar.
-    ```bash
-    npx vite
-    ```
+    O servidor deverá estar rodando na URL configurada no frontend (por padrão, `http://localhost:3001`).
 
 ---
 
 ## 🚀 Como Usar
 
-A aplicação simula um ambiente completo sem a necessidade de um backend. Todos os dados são salvos em um banco de dados SQLite local no seu navegador, garantindo que tudo funcione offline.
+A aplicação se conecta a um backend real para persistência e sincronização de dados, mas continua usando um banco de dados SQLite local no seu navegador para garantir que tudo funcione offline.
 
 ### Visão do Cliente
-- **Login:** Use as credenciais `cliente@agendalink.com` / `123`.
+- **Login:** Use as credenciais `cliente@agendalink.com` / `123` (após cadastrá-las no seu backend).
 - **Navegação:** Use a barra de navegação inferior para explorar serviços, ver promoções e acessar seu perfil.
 - **Agendamento:** Escolha um serviço, selecione data/hora e confirme.
 - **Instalação:** Clique no botão **"Instalar App"** que aparece no canto da tela para adicionar o AgendaLink à sua tela inicial.
 
 ### Painel do Administrador
-- **Login:** Use as credenciais `admin@admin` / `admin`.
+- **Login:** Use as credenciais `admin@admin` / `admin` (após cadastrá-las no seu backend com a role 'admin').
 - **Acesso:** Após o login, você verá o painel administrativo.
 - **Alternar Visão:** Um botão flutuante permite que você alterne entre a visão de administrador e a de cliente para testar a experiência completa.

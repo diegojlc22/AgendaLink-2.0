@@ -1,161 +1,185 @@
+
 // ====================================================================================
-// !! IMPORTANTE: MOCK DE SERVIDOR !!
+// !! ARQUITETURA DE SERVIDOR REAL !!
 // ====================================================================================
-// Este arquivo simula um backend para fins de demonstração.
-// Ele usa o `localStorage` do navegador para persistir os dados.
+// Este arquivo foi refatorado para se comunicar com um backend real. A simulação
+// que usava `localStorage` foi removida. Para que a aplicação funcione, você
+// precisa construir e rodar um servidor que exponha os endpoints de API descritos
+// abaixo.
 //
-// **LIMITAÇÃO CONHECIDA:** O `localStorage` é isolado por navegador.
-// Isso significa que os dados não serão sincronizados entre navegadores diferentes
-// (ex: Chrome e Firefox) ou entre abas anônimas e normais. A sincronização em
-// tempo real funcionará perfeitamente entre múltiplas abas *do mesmo navegador*.
-//
-// Em um ambiente de produção, este arquivo seria substituído por chamadas de API
-// a um servidor real (ex: Node.js, Python, etc.) com um banco de dados central.
+// TECNOLOGIAS RECOMENDADAS PARA O BACKEND:
+// - Servidor: Node.js com Express.js
+// - Banco de Dados: PostgreSQL
+// - ORM: Prisma (para facilitar a interação com o banco de dados)
+// - Tempo Real: Socket.IO (para WebSockets)
+// - Autenticação: JWT (JSON Web Tokens) e `bcrypt` para hashing de senhas.
 // ====================================================================================
 
 import { AppState, Service, Promotion, Appointment, AppointmentStatus, Client, BrandingSettings, AppSettings } from '../types';
-import { INITIAL_APP_STATE } from '../constants';
 
-// --- Mock do Banco de Dados do Servidor ---
-// Usamos localStorage para persistir o estado do servidor mockado entre recarregamentos.
-let serverState: AppState = (() => {
-    try {
-        const storedState = localStorage.getItem('mockServerState');
-        if (storedState) {
-            return JSON.parse(storedState);
-        }
-        // Se não houver estado salvo, inicialize com o padrão e salve-o.
-        const initialState = JSON.parse(JSON.stringify(INITIAL_APP_STATE));
-        localStorage.setItem('mockServerState', JSON.stringify(initialState));
-        return initialState;
-    } catch (e) {
-        return JSON.parse(JSON.stringify(INITIAL_APP_STATE));
+const BASE_URL = 'http://localhost:3001/api'; // URL do seu servidor backend
+
+const getToken = () => localStorage.getItem('agendaLinkAuthToken');
+
+// Helper para fazer chamadas de API, incluindo o token de autenticação
+const apiFetch = async (endpoint: string, options: RequestInit = {}) => {
+    const token = getToken();
+    // FIX: The previous method of creating headers was not type-safe because `options.headers`
+    // can be a Headers object, which cannot be spread into a plain object.
+    // Using the `Headers` constructor is the correct and robust way to handle this.
+    const headers = new Headers(options.headers);
+
+    if (!headers.has('Content-Type')) {
+        headers.set('Content-Type', 'application/json');
     }
-})();
 
+    if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+    }
 
-const saveServerState = () => {
-    localStorage.setItem('mockServerState', JSON.stringify(serverState));
+    const response = await fetch(`${BASE_URL}${endpoint}`, {
+        ...options,
+        headers,
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: response.statusText }));
+        throw new Error(errorData.message || 'Ocorreu um erro na comunicação com o servidor.');
+    }
+    
+    if (response.status === 204) {
+        return {};
+    }
+
+    return response.json();
 };
 
-const FAKE_LATENCY = 400; // Simula a latência da rede
 
-// Helper para simular uma chamada de API assíncrona
-const mockApiCall = <T>(callback: () => T): Promise<T> => {
-    return new Promise((resolve, reject) => {
-        setTimeout(() => {
-            // Simula uma falha de rede aleatória (5% de chance) para testar a resiliência
-            if (Math.random() < 0.05) {
-                reject(new Error("Falha de rede simulada. Tente novamente."));
-                return;
-            }
-            try {
-                const result = callback();
-                saveServerState(); // Persiste o estado após cada operação bem-sucedida
-                resolve(JSON.parse(JSON.stringify(result))); // Retorna uma cópia profunda para evitar mutações
-            } catch (e) {
-                reject(e);
-            }
-        }, FAKE_LATENCY);
+// --- Auth Endpoints ---
+
+// Backend: `POST /api/auth/login` - Body: { email, password }. Retorna: { token, user }
+export const apiLogin = (email: string, password: string): Promise<{ token: string; user: Client }> => {
+    return apiFetch('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
     });
 };
 
-// --- Funções da API ---
+// Backend: `POST /api/auth/register` - Body: Omit<Client, 'id'>. Retorna: { token, user }
+export const apiRegisterClient = (newUser: Omit<Client, 'id'>): Promise<{ token: string; user: Client }> => {
+    return apiFetch('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify(newUser),
+    });
+};
 
-export const apiGetState = () => mockApiCall(() => serverState);
+// Backend: `GET /api/auth/me` - Valida o token e retorna o usuário logado.
+export const apiGetCurrentUser = (): Promise<Client> => apiFetch('/auth/me');
 
-export const apiAddOrUpdateService = (service: Service) => mockApiCall(() => {
-    const index = serverState.services.findIndex(s => s.id === service.id);
-    if (index > -1) serverState.services[index] = service;
-    else serverState.services.push(service);
-    return service;
-});
+// Backend: `POST /api/auth/forgot-password` - Body: { email }. Retorna: { newPassword }
+export const apiResetPasswordForEmail = (email: string): Promise<string> => {
+    return apiFetch('/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+    }).then(data => data.newPassword);
+};
 
-export const apiDeleteService = (serviceId: string) => mockApiCall(() => {
-    serverState.services = serverState.services.filter(s => s.id !== serviceId);
-    return { success: true };
-});
 
-export const apiAddOrUpdatePromotion = (promotion: Promotion) => mockApiCall(() => {
-    const index = serverState.promotions.findIndex(p => p.id === promotion.id);
-    if (index > -1) serverState.promotions[index] = promotion;
-    else serverState.promotions.push(promotion);
-    return promotion;
-});
+// --- Data Fetching ---
 
-export const apiDeletePromotion = (promotionId: string) => mockApiCall(() => {
-    serverState.promotions = serverState.promotions.filter(p => p.id !== promotionId);
-    return { success: true };
-});
+// Backend: Deve ter endpoints para cada tipo de dado (ex: GET /api/services).
+export const apiGetState = async (): Promise<AppState> => {
+    const [services, clients, appointments, promotions, settings] = await Promise.all([
+        apiFetch('/data/services'),
+        apiFetch('/data/clients'),
+        apiFetch('/data/appointments'),
+        apiFetch('/data/promotions'),
+        apiFetch('/data/settings'),
+    ]);
+    return { services, clients, appointments, promotions, settings, pixTransactions: [] };
+};
 
-export const apiCreateAppointment = (appointment: Appointment) => mockApiCall(() => {
-    serverState.appointments.push(appointment);
-    return appointment;
-});
 
-export const apiUpdateAppointmentStatus = (appointmentId: string, status: AppointmentStatus, paymentConfirmed?: boolean) => mockApiCall(() => {
-    const index = serverState.appointments.findIndex(a => a.id === appointmentId);
-    if (index > -1) {
-        serverState.appointments[index].status = status;
-        if (paymentConfirmed !== undefined) {
-            serverState.appointments[index].paymentConfirmed = paymentConfirmed;
-        }
-    }
-    return serverState.appointments[index];
-});
+// --- Service Endpoints ---
 
-export const apiUpdateClientNotes = (clientId: string, notes: string) => mockApiCall(() => {
-    const index = serverState.clients.findIndex(c => c.id === clientId);
-    if (index > -1) serverState.clients[index].notes = notes;
-    return serverState.clients[index];
-});
+// Backend: `POST /api/services` (Upsert logic: cria se não existir, atualiza se existir) - Body: Service
+export const apiAddOrUpdateService = (service: Service): Promise<Service> => {
+    return apiFetch(`/services`, { method: 'POST', body: JSON.stringify(service) });
+};
 
-export const apiResetClientPassword = (clientId: string) => mockApiCall(() => {
-    const userIndex = serverState.clients.findIndex(c => c.id === clientId);
-    if (userIndex === -1) throw new Error('Cliente não encontrado.');
-    const newPassword = Math.random().toString(36).slice(-8);
-    serverState.clients[userIndex].password = newPassword;
-    return newPassword;
-});
+// Backend: `DELETE /api/services/:id`
+export const apiDeleteService = (serviceId: string): Promise<{ success: boolean }> => {
+    return apiFetch(`/services/${serviceId}`, { method: 'DELETE' });
+};
 
-export const apiRegisterClient = (newUser: Client) => mockApiCall(() => {
-    if (serverState.clients.some(c => c.email.toLowerCase() === newUser.email.toLowerCase())) {
-        throw new Error('Este e-mail já está em uso.');
-    }
-    serverState.clients.push(newUser);
-    return newUser;
-});
 
-export const apiLogin = (email: string, password: string): Promise<Client> => mockApiCall(() => {
-    const user = serverState.clients.find(c => c.email.toLowerCase() === email.toLowerCase() && c.password === password);
-    if (!user) throw new Error('Email ou senha inválidos.');
-    return user;
-});
+// --- Promotion Endpoints ---
 
-export const apiUpdateBrandingSettings = (branding: BrandingSettings) => mockApiCall(() => {
-    serverState.settings.branding = branding;
-    return branding;
-});
+// Backend: `POST /api/promotions` (Upsert logic) - Body: Promotion
+export const apiAddOrUpdatePromotion = (promotion: Promotion): Promise<Promotion> => {
+    return apiFetch('/promotions', { method: 'POST', body: JSON.stringify(promotion) });
+};
 
-export const apiUpdatePixSettings = (pix: AppSettings['pixCredentials']) => mockApiCall(() => {
-    serverState.settings.pixCredentials = pix;
-    return pix;
-});
+// Backend: `DELETE /api/promotions/:id`
+export const apiDeletePromotion = (promotionId: string): Promise<{ success: boolean }> => {
+    return apiFetch(`/promotions/${promotionId}`, { method: 'DELETE' });
+};
 
-export const apiUpdateMaintenanceMode = (maintenance: AppSettings['maintenanceMode']) => mockApiCall(() => {
-    serverState.settings.maintenanceMode = maintenance;
-    return maintenance;
-});
 
-export const apiDangerouslyReplaceState = (newState: AppState) => mockApiCall(() => {
-    serverState = newState;
-    return { success: true };
-});
+// --- Appointment Endpoints ---
 
-export const apiResetPasswordForEmail = (email: string) => mockApiCall(() => {
-    const userIndex = serverState.clients.findIndex(c => c.email.toLowerCase() === email.toLowerCase());
-    if (userIndex === -1) throw new Error('E-mail não encontrado.');
-    const newPassword = Math.random().toString(36).slice(-8);
-    serverState.clients[userIndex].password = newPassword;
-    return newPassword;
-});
+// Backend: `POST /api/appointments` - Body: Appointment
+export const apiCreateAppointment = (appointment: Appointment): Promise<Appointment> => {
+    return apiFetch('/appointments', { method: 'POST', body: JSON.stringify(appointment) });
+};
+
+// Backend: `PUT /api/appointments/:id/status` - Body: { status, paymentConfirmed }
+export const apiUpdateAppointmentStatus = (appointmentId: string, status: AppointmentStatus, paymentConfirmed?: boolean): Promise<Appointment> => {
+    return apiFetch(`/appointments/${appointmentId}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ status, paymentConfirmed }),
+    });
+};
+
+
+// --- Client Endpoints ---
+
+// Backend: `PUT /api/clients/:id/notes` - Body: { notes }
+export const apiUpdateClientNotes = (clientId: string, notes: string): Promise<Client> => {
+    return apiFetch(`/clients/${clientId}/notes`, {
+        method: 'PUT',
+        body: JSON.stringify({ notes }),
+    });
+};
+
+// Backend: `POST /api/clients/:id/reset-password` - Retorna: { newPassword }
+export const apiResetClientPassword = (clientId: string): Promise<string> => {
+    return apiFetch(`/clients/${clientId}/reset-password`, { method: 'POST' })
+        .then(data => data.newPassword);
+};
+
+
+// --- Settings Endpoints ---
+
+// Backend: `PUT /api/settings/branding` - Body: BrandingSettings
+export const apiUpdateBrandingSettings = (branding: BrandingSettings): Promise<BrandingSettings> => {
+    return apiFetch('/settings/branding', { method: 'PUT', body: JSON.stringify(branding) });
+};
+
+// Backend: `PUT /api/settings/pix` - Body: AppSettings['pixCredentials']
+export const apiUpdatePixSettings = (pix: AppSettings['pixCredentials']): Promise<AppSettings['pixCredentials']> => {
+    return apiFetch('/settings/pix', { method: 'PUT', body: JSON.stringify(pix) });
+};
+
+// Backend: `PUT /api/settings/maintenance` - Body: AppSettings['maintenanceMode']
+export const apiUpdateMaintenanceMode = (maintenance: AppSettings['maintenanceMode']): Promise<AppSettings['maintenanceMode']> => {
+    return apiFetch('/settings/maintenance', { method: 'PUT', body: JSON.stringify(maintenance) });
+};
+
+
+// --- DANGER ZONE ---
+
+// Backend: `POST /api/data/replace` - Body: AppState
+export const apiDangerouslyReplaceState = (newState: AppState): Promise<{ success: boolean }> => {
+    return apiFetch('/data/replace', { method: 'POST', body: JSON.stringify(newState) });
+};

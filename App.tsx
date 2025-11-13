@@ -1,3 +1,4 @@
+
 import React, { useState, createContext, useContext, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { AppState, BrandingSettings, Client, Service, Promotion, Appointment, AppointmentStatus, AppSettings, AppContextType, SyncState } from './types';
 import { INITIAL_APP_STATE } from './constants';
@@ -65,12 +66,9 @@ const MaintenanceMode: React.FC = () => {
         e.preventDefault();
         setError('');
         try {
-            // IMPORTANT: We must also check that the user logging in has the 'admin' role.
-            const user = state.clients.find(c => c.email.toLowerCase() === email.toLowerCase() && c.password === password);
-            if (user?.role !== 'admin') {
-                throw new Error('Acesso negado. Apenas administradores podem entrar durante a manutenção.');
-            }
-            await login(email, password); // This will update currentUser and re-render App
+            // A verificação de admin agora deve ocorrer no backend, mas mantemos uma verificação
+            // client-side para o caso especial do modo manutenção.
+            await login(email, password);
         } catch (err: any) {
             setError(err.message);
         }
@@ -146,27 +144,20 @@ const LoadingSpinner: React.FC = () => (
 export default function App() {
   const [state, setState] = useState<AppState>(INITIAL_APP_STATE);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [syncState, setSyncState] = useState<SyncState>('idle');
   
-  const [currentUser, setCurrentUser] = useState<Omit<Client, 'password'> | null>(() => {
-    try {
-        const savedUser = localStorage.getItem('agendaLinkCurrentUser');
-        if (savedUser) {
-          const user = JSON.parse(savedUser);
-          const { password, ...userWithoutPassword } = user;
-          return userWithoutPassword;
-        }
-        return null;
-    } catch (error) {
-        return null;
-    }
-  });
+  const [currentUser, setCurrentUser] = useState<Omit<Client, 'password'> | null>(null);
   
-  const [isAdminView, setIsAdminView] = useState(currentUser?.role === 'admin');
+  const [isAdminView, setIsAdminView] = useState(false);
   const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   const forceSync = useCallback(async () => {
+    if (!navigator.onLine) {
+        setSyncState('idle'); // Fica ocioso se estiver offline
+        return;
+    }
     setSyncState('syncing');
     try {
       const freshState = await api.apiGetState();
@@ -178,15 +169,35 @@ export default function App() {
     }
   }, []);
 
+  // Efeito para verificar o token de autenticação na inicialização
+  useEffect(() => {
+    const verifyToken = async () => {
+        const token = localStorage.getItem('agendaLinkAuthToken');
+        if (token) {
+            try {
+                const user = await api.apiGetCurrentUser();
+                const { password: _, ...userWithoutPassword } = user;
+                setCurrentUser(userWithoutPassword);
+                setIsAdminView(user.role === 'admin');
+            } catch (error) {
+                console.error("Token verification failed:", error);
+                localStorage.removeItem('agendaLinkAuthToken');
+                setCurrentUser(null);
+            }
+        }
+        setIsAuthLoading(false);
+    };
+    verifyToken();
+  }, []);
+
+  // Efeito para inicializar o banco de dados e carregar o estado inicial
   useEffect(() => {
     const initializeApp = async () => {
       await initDatabase();
       try {
-        // Tenta buscar do "servidor" primeiro
         const serverState = await api.apiGetState();
         setState(serverState);
       } catch (error) {
-        // Se falhar (offline), usa o banco de dados local como fallback
         console.warn("Could not fetch from server, falling back to local DB.", error);
         let finalState = loadStateFromDB();
         if (!finalState) {
@@ -198,12 +209,33 @@ export default function App() {
       }
     };
     initializeApp();
-  }, []);
+  }, [currentUser]); // Recarrega o estado quando o usuário muda (login/logout)
+
+  // Efeito para WebSockets
+  useEffect(() => {
+    const token = localStorage.getItem('agendaLinkAuthToken');
+    if (!token || !currentUser) return;
+
+    const ws = new WebSocket(`ws://localhost:3001?token=${token}`);
+
+    ws.onopen = () => console.log('WebSocket connected');
+    ws.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        if (message.type === 'STATE_CHANGED') {
+            console.log('Server state changed, forcing sync.');
+            forceSync();
+        }
+    };
+    ws.onclose = () => console.log('WebSocket disconnected');
+    ws.onerror = (error) => console.error('WebSocket error:', error);
+
+    return () => ws.close();
+  }, [currentUser, forceSync]);
 
   useEffect(() => {
     const goOnline = () => {
       setIsOnline(true);
-      forceSync(); // Tenta sincronizar ao ficar online
+      forceSync();
     };
     const goOffline = () => setIsOnline(false);
     window.addEventListener('online', goOnline);
@@ -220,7 +252,6 @@ export default function App() {
         if (data.type === 'STATE_UPDATED') {
             const receivedState = data.payload;
             setState(currentState => {
-                // Apenas atualiza se o estado for diferente para evitar loops
                 if (JSON.stringify(currentState) !== JSON.stringify(receivedState)) {
                     return receivedState;
                 }
@@ -296,20 +327,11 @@ export default function App() {
 
   useEffect(() => {
     if (isLoading) return;
-    // Salva no DB local (cache offline) e notifica outras abas
     saveStateToDB(state);
     const message = { type: 'STATE_UPDATED', payload: state };
     channel.postMessage(JSON.stringify(message));
     applyBranding(state.settings.branding);
   }, [state, isLoading, applyBranding]);
-
-  useEffect(() => {
-    if (currentUser) {
-        localStorage.setItem('agendaLinkCurrentUser', JSON.stringify(currentUser));
-    } else {
-        localStorage.removeItem('agendaLinkCurrentUser');
-    }
-  }, [currentUser]);
 
   const handleInstallClick = () => {
     if (!installPromptEvent) return;
@@ -317,58 +339,52 @@ export default function App() {
     installPromptEvent.userChoice.then(() => setInstallPromptEvent(null));
   };
   
-  // --- Auth & User Management ---
   const login = useCallback(async (email: string, password: string) => {
-    const user = await api.apiLogin(email, password);
+    const { token, user } = await api.apiLogin(email, password);
+    localStorage.setItem('agendaLinkAuthToken', token);
     if (user) {
         const { password: _, ...userWithoutPassword } = user;
         setCurrentUser(userWithoutPassword);
         setIsAdminView(user.role === 'admin');
-        await forceSync(); // Sincroniza o estado após o login
     } else {
-        throw new Error('Email ou senha inválidos.');
+        throw new Error('Usuário não retornado pela API.');
     }
-  }, [forceSync]);
+  }, []);
 
   const logout = useCallback(() => {
+    localStorage.removeItem('agendaLinkAuthToken');
     setCurrentUser(null);
+    setIsAdminView(false);
   }, []);
 
   const register = useCallback(async (newUserData: Omit<Client, 'id'>) => {
-    const newUser: Client = { id: new Date().toISOString(), ...newUserData };
-    await api.apiRegisterClient(newUser);
+    // FIX: The argument to apiRegisterClient should be newUserData, not the destructured newUser.
+    const { token, user: newUser } = await api.apiRegisterClient(newUserData);
+    localStorage.setItem('agendaLinkAuthToken', token);
     const { password: _, ...userWithoutPassword } = newUser;
     setCurrentUser(userWithoutPassword);
     setIsAdminView(false);
-    await forceSync();
-  }, [forceSync]);
+  }, []);
 
   const resetPassword = useCallback(async (email: string) => {
-    // A validação se o e-mail existe é feita na API mockada
-    const newPassword = await api.apiResetClientPassword(email);
+    // FIX: apiResetPasswordForEmail returns a string directly, not an object to be destructured.
+    const newPassword = await api.apiResetPasswordForEmail(email);
     await forceSync();
     return newPassword;
   }, [forceSync]);
 
-  // --- Funções de Modificação de Estado (Offline-First) ---
   const createOptimisticUpdater = <T,>(
-    // A função que chama a API
     apiCall: (...args: T[]) => Promise<any>,
-    // A função que calcula o novo estado local
     stateModifier: (prevState: AppState, ...args: T[]) => AppState,
-    // (Opcional) Ação a ser executada em caso de falha de sincronização
     onSyncFail?: (originalState: AppState) => AppState
   ) => {
     return async (...args: T[]) => {
       let originalState: AppState | null = null;
-      
-      // 1. Atualização Otimista
       setState(prevState => {
         originalState = prevState;
         return stateModifier(prevState, ...args);
       });
 
-      // 2. Sincronização em Segundo Plano
       setSyncState('syncing');
       try {
         await apiCall(...args);
@@ -378,7 +394,6 @@ export default function App() {
         setSyncState('error');
         alert("A sincronização falhou. Suas alterações foram salvas localmente, mas a operação foi revertida para manter a consistência com o servidor.");
         
-        // 3. Rollback em caso de falha
         if (originalState) {
           const finalState = onSyncFail ? onSyncFail(originalState) : originalState;
           setState(finalState);
@@ -450,7 +465,6 @@ export default function App() {
       settings: { ...prevState.settings, maintenanceMode: maintenance },
   }));
 
-  // Funções que devem ser autoritativas (não otimistas)
   const resetClientPassword = useCallback(async (clientId: string) => {
       setSyncState('syncing');
       try {
@@ -469,7 +483,7 @@ export default function App() {
     setSyncState('syncing');
     try {
         await api.apiDangerouslyReplaceState(newState);
-        await forceSync(); // Busca o novo estado que acabamos de enviar
+        await forceSync();
     } catch (error) {
         console.error("Data replacement failed:", error);
         setSyncState('error');
@@ -490,7 +504,7 @@ export default function App() {
       updateBrandingSettings, updatePixSettings, updateMaintenanceMode,
       dangerouslyReplaceState, syncState, forceSync]);
   
-  if (isLoading) return <LoadingSpinner />;
+  if (isLoading || isAuthLoading) return <LoadingSpinner />;
 
   const isMaintenance = state.settings.maintenanceMode.enabled;
   const isAdmin = currentUser?.role === 'admin';

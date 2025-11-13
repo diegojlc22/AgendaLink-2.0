@@ -66,7 +66,7 @@ const SyncManager: React.FC = () => {
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Sincronização e Backups</h2>
 
             <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg mb-8">
-                <h3 className="text-xl font-bold mb-3 text-secondary">Sincronização Automática em Tempo Real</h3>
+                <h3 className="text-xl font-bold mb-3 text-secondary">Sincronização em Tempo Real</h3>
                 <p className="text-gray-600 dark:text-gray-300">
                     Sua aplicação agora está conectada a um servidor central, permitindo a <strong className="font-semibold">sincronização de dados em tempo real</strong> entre todos os seus dispositivos.
                 </p>
