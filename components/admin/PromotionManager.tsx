@@ -18,7 +18,6 @@ const PromotionForm: React.FC<{ promotion?: Promotion; services: Service[]; onSa
     const [applyToAll, setApplyToAll] = useState(promotion ? promotion.serviceIds.length === services.length && services.length > 0 : false);
 
     useEffect(() => {
-        // If editing a promotion that applies to all services, ensure the checkbox stays checked
         if (promotion && promotion.serviceIds.length === services.length && services.length > 0) {
             setApplyToAll(true);
         }
@@ -116,28 +115,19 @@ const PromotionForm: React.FC<{ promotion?: Promotion; services: Service[]; onSa
 };
 
 const PromotionManager: React.FC = () => {
-    const { state, setState } = useAppContext();
+    const { state, addOrUpdatePromotion, deletePromotion } = useAppContext();
     const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(null);
     const [isCreating, setIsCreating] = useState(false);
 
     const handleSave = (promotion: Promotion) => {
-        setState(prev => {
-            const exists = prev.promotions.some(p => p.id === promotion.id);
-            const promotions = exists
-                ? prev.promotions.map(p => p.id === promotion.id ? promotion : p)
-                : [...prev.promotions, promotion];
-            return { ...prev, promotions };
-        });
+        addOrUpdatePromotion(promotion);
         setEditingPromotion(null);
         setIsCreating(false);
     };
 
     const handleDelete = (id: string) => {
         if (window.confirm('Tem certeza que deseja excluir esta promoção?')) {
-            setState(prev => ({
-                ...prev,
-                promotions: prev.promotions.filter(p => p.id !== id),
-            }));
+            deletePromotion(id);
         }
     };
 

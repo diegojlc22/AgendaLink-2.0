@@ -1,8 +1,5 @@
-
-
-
 import React, { useState, createContext, useContext, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
-import { AppState, BrandingSettings, Client } from './types';
+import { AppState, BrandingSettings, Client, Service, Promotion, Appointment, AppointmentStatus, AppSettings, AppContextType } from './types';
 import { INITIAL_APP_STATE } from './constants';
 import PWAInstallPrompt from './components/common/PWAInstallPrompt';
 import { AlertTriangleIcon, WifiOffIcon, ShieldCheckIcon, UsersIcon } from './components/common/Icons';
@@ -12,18 +9,6 @@ const ClientView = lazy(() => import('./components/client/ClientView'));
 const AdminView = lazy(() => import('./components/admin/AdminView'));
 const AuthPage = lazy(() => import('./components/auth/AuthPage'));
 
-
-type AppContextType = {
-  state: AppState;
-  setState: React.Dispatch<React.SetStateAction<AppState>>;
-  currentUser: Omit<Client, 'password'> | null;
-  login: (email: string, password: string) => void;
-  logout: () => void;
-  register: (newUser: Omit<Client, 'id'>) => void;
-  resetPassword: (email: string) => string;
-  isAdminView: boolean;
-  setIsAdminView: (isAdmin: boolean) => void;
-};
 
 // This interface is needed because it's not a standard part of the TS DOM library yet.
 interface BeforeInstallPromptEvent extends Event {
@@ -159,14 +144,13 @@ const LoadingSpinner: React.FC = () => (
 
 export default function App() {
   const [state, setState] = useState<AppState>(INITIAL_APP_STATE);
-  const [isLoading, setIsLoading] = useState(true); // Novo estado de carregamento
+  const [isLoading, setIsLoading] = useState(true);
   
   const [currentUser, setCurrentUser] = useState<Omit<Client, 'password'> | null>(() => {
     try {
         const savedUser = localStorage.getItem('agendaLinkCurrentUser');
         if (savedUser) {
           const user = JSON.parse(savedUser);
-          // Security: Ensure password is not part of the session state
           const { password, ...userWithoutPassword } = user;
           return userWithoutPassword;
         }
@@ -180,57 +164,42 @@ export default function App() {
   const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
-  // Efeito para inicializar o DB e carregar o estado
   useEffect(() => {
     const initializeApp = async () => {
       await initDatabase();
       let finalState = loadStateFromDB();
-
       if (!finalState) {
         finalState = INITIAL_APP_STATE;
       }
-      
-      // BUG FIX: Mantém o admin atualizado
       const defaultAdmin = INITIAL_APP_STATE.clients.find(c => c.role === 'admin');
       if (defaultAdmin) {
         const adminIndex = finalState.clients.findIndex(c => c.email.toLowerCase() === defaultAdmin.email.toLowerCase());
         if (adminIndex !== -1) {
-          finalState.clients[adminIndex] = {
-            ...finalState.clients[adminIndex],
-            password: defaultAdmin.password,
-            role: 'admin'
-          };
+          finalState.clients[adminIndex] = { ...finalState.clients[adminIndex], password: defaultAdmin.password, role: 'admin' };
         } else {
           finalState.clients.push(defaultAdmin);
         }
       }
-      
       setState(finalState);
       setIsLoading(false);
     };
-
     initializeApp();
   }, []);
 
-  // Effect for online/offline status
   useEffect(() => {
     const goOnline = () => setIsOnline(true);
     const goOffline = () => setIsOnline(false);
-
     window.addEventListener('online', goOnline);
     window.addEventListener('offline', goOffline);
-
     return () => {
         window.removeEventListener('online', goOnline);
         window.removeEventListener('offline', goOffline);
     };
   }, []);
 
-  // Effect for multi-tab state sync via BroadcastChannel
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
         const data = JSON.parse(event.data);
-        
         if (data.type === 'STATE_UPDATED') {
             const receivedState = data.payload;
             setState(currentState => {
@@ -242,7 +211,6 @@ export default function App() {
         }
     };
     channel.addEventListener('message', handleMessage);
-
     return () => {
         channel.removeEventListener('message', handleMessage);
     };
@@ -253,9 +221,7 @@ export default function App() {
       event.preventDefault();
       setInstallPromptEvent(event as BeforeInstallPromptEvent);
     };
-
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
@@ -267,97 +233,54 @@ export default function App() {
     root.style.setProperty('--color-primary', hexToRgb(branding.colors.primary));
     root.style.setProperty('--color-secondary', hexToRgb(branding.colors.secondary));
     root.style.setProperty('--color-accent', hexToRgb(branding.colors.accent));
-    
     const themeColorMeta = document.querySelector('meta[name="theme-color"]');
     if (themeColorMeta) {
       themeColorMeta.setAttribute('content', branding.colors.primary);
     }
   }, []);
 
-  // Effect to dynamically update the PWA manifest
   useEffect(() => {
     const updateManifestAndIcons = (branding: BrandingSettings) => {
-      // Clean up old tags to prevent duplicates
       document.querySelector('link[rel="manifest"]')?.remove();
       document.querySelector('link[rel="apple-touch-icon"]')?.remove();
       document.querySelector('meta[name="apple-mobile-web-app-title"]')?.remove();
-
       if (!branding.appName || !branding.logoUrl) return;
-
       const manifest = {
         short_name: branding.appName.substring(0, 12),
         name: branding.appName,
-        description: "An all-in-one web application for beauty professionals, featuring an advanced admin panel and intelligent client scheduling.",
-        lang: "pt-BR",
-        start_url: "/",
-        display: "standalone",
-        orientation: "portrait-primary",
-        theme_color: branding.colors.primary,
-        background_color: "#f3f4f6",
-        icons: [
-          { src: branding.logoUrl, type: "image/png", sizes: "72x72" },
-          { src: branding.logoUrl, type: "image/png", sizes: "96x96" },
-          { src: branding.logoUrl, type: "image/png", sizes: "128x128" },
-          { src: branding.logoUrl, type: "image/png", sizes: "144x144" },
-          { src: branding.logoUrl, type: "image/png", sizes: "152x152" },
-          { src: branding.logoUrl, type: "image/png", sizes: "192x192", purpose: "any maskable" },
-          { src: branding.logoUrl, type: "image/png", sizes: "384x384" },
-          { src: branding.logoUrl, type: "image/png", sizes: "512x512" }
-        ],
-        shortcuts: [
-          {
-            name: "Agendar Horário",
-            short_name: "Agendar",
-            description: "Acessar a tela de agendamento de serviços.",
-            url: "/#services",
-            icons: [{ src: branding.logoUrl, sizes: "96x96" }]
-          },
-          {
-            name: "Minha Conta",
-            short_name: "Conta",
-            description: "Ver seu perfil e histórico de agendamentos.",
-            url: "/#profile",
-            icons: [{ src: branding.logoUrl, sizes: "96x96" }]
-          }
-        ]
+        description: "An all-in-one web application for beauty professionals...",
+        lang: "pt-BR", start_url: "/", display: "standalone", orientation: "portrait-primary",
+        theme_color: branding.colors.primary, background_color: "#f3f4f6",
+        icons: [72, 96, 128, 144, 152, 192, 384, 512].map(size => ({
+          src: branding.logoUrl, type: "image/png", sizes: `${size}x${size}`,
+          ...(size === 192 && { purpose: "any maskable" })
+        })),
+        shortcuts: [{ name: "Agendar Horário", short_name: "Agendar", url: "/#services", icons: [{ src: branding.logoUrl, sizes: "96x96" }] },
+                    { name: "Minha Conta", short_name: "Conta", url: "/#profile", icons: [{ src: branding.logoUrl, sizes: "96x96" }] }]
       };
-
       const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
       const manifestUrl = URL.createObjectURL(manifestBlob);
-
       const manifestLink = document.createElement('link');
       manifestLink.rel = 'manifest';
       manifestLink.href = manifestUrl;
       document.head.appendChild(manifestLink);
-      
       const appleIconLink = document.createElement('link');
       appleIconLink.rel = 'apple-touch-icon';
       appleIconLink.href = branding.logoUrl;
       document.head.appendChild(appleIconLink);
-
       const appleTitleMeta = document.createElement('meta');
       appleTitleMeta.name = 'apple-mobile-web-app-title';
       appleTitleMeta.content = branding.appName;
       document.head.appendChild(appleTitleMeta);
     };
-
     updateManifestAndIcons(state.settings.branding);
-    
   }, [state.settings.branding]);
 
-
-  // Efeito para salvar o estado no DB e transmitir
   useEffect(() => {
-    if (isLoading) return; // Não salva o estado inicial antes de carregar do DB
+    if (isLoading) return;
     saveStateToDB(state);
-    
-    // Send a structured message for better handling on the receiving end
-    const message = {
-        type: 'STATE_UPDATED',
-        payload: state,
-    };
+    const message = { type: 'STATE_UPDATED', payload: state };
     channel.postMessage(JSON.stringify(message));
-
     applyBranding(state.settings.branding);
   }, [state, isLoading, applyBranding]);
 
@@ -370,20 +293,12 @@ export default function App() {
   }, [currentUser]);
 
   const handleInstallClick = () => {
-    if (!installPromptEvent) {
-      return;
-    }
+    if (!installPromptEvent) return;
     installPromptEvent.prompt();
-    installPromptEvent.userChoice.then((choiceResult) => {
-      if (choiceResult.outcome === 'accepted') {
-        console.log('User accepted the A2HS prompt');
-      } else {
-        console.log('User dismissed the A2HS prompt');
-      }
-      setInstallPromptEvent(null);
-    });
+    installPromptEvent.userChoice.then(() => setInstallPromptEvent(null));
   };
   
+  // --- Auth & User Management ---
   const login = useCallback((email: string, password: string) => {
     const user = state.clients.find(c => c.email.toLowerCase() === email.toLowerCase() && c.password === password);
     if (user) {
@@ -400,25 +315,19 @@ export default function App() {
   }, []);
 
   const register = useCallback((newUserData: Omit<Client, 'id'>) => {
-    const emailExists = state.clients.some(c => c.email.toLowerCase() === newUserData.email.toLowerCase());
-    if (emailExists) {
+    if (state.clients.some(c => c.email.toLowerCase() === newUserData.email.toLowerCase())) {
         throw new Error('Este e-mail já está em uso.');
     }
-    const newUser: Client = {
-        id: new Date().toISOString(),
-        ...newUserData
-    };
+    const newUser: Client = { id: new Date().toISOString(), ...newUserData };
     setState(prev => ({ ...prev, clients: [...prev.clients, newUser] }));
     const { password: _, ...userWithoutPassword } = newUser;
     setCurrentUser(userWithoutPassword);
     setIsAdminView(false);
-  }, [state.clients, setState]);
+  }, [state.clients]);
 
   const resetPassword = useCallback((email: string) => {
       const userIndex = state.clients.findIndex(c => c.email.toLowerCase() === email.toLowerCase());
-      if (userIndex === -1) {
-          throw new Error('E-mail não encontrado.');
-      }
+      if (userIndex === -1) throw new Error('E-mail não encontrado.');
       const newPassword = Math.random().toString(36).slice(-8);
       setState(prev => {
           const newClients = [...prev.clients];
@@ -426,14 +335,90 @@ export default function App() {
           return { ...prev, clients: newClients };
       });
       return newPassword;
-  }, [state.clients, setState]);
+  }, [state.clients]);
 
+  // --- Nova Arquitetura: Funções de Modificação de Estado ---
+  const addOrUpdateService = useCallback((service: Service) => {
+    setState(prev => {
+        const exists = prev.services.some(s => s.id === service.id);
+        const services = exists ? prev.services.map(s => s.id === service.id ? service : s) : [...prev.services, service];
+        return { ...prev, services };
+    });
+  }, []);
 
-  const contextValue = useMemo(() => ({ state, setState, currentUser, login, logout, register, resetPassword, isAdminView, setIsAdminView }), [state, currentUser, login, logout, register, resetPassword, setState, isAdminView, setIsAdminView]);
+  const deleteService = useCallback((serviceId: string) => {
+    setState(prev => ({ ...prev, services: prev.services.filter(s => s.id !== serviceId) }));
+  }, []);
+
+  const addOrUpdatePromotion = useCallback((promotion: Promotion) => {
+    setState(prev => {
+        const exists = prev.promotions.some(p => p.id === promotion.id);
+        const promotions = exists ? prev.promotions.map(p => p.id === promotion.id ? promotion : p) : [...prev.promotions, promotion];
+        return { ...prev, promotions };
+    });
+  }, []);
+
+  const deletePromotion = useCallback((promotionId: string) => {
+    setState(prev => ({ ...prev, promotions: prev.promotions.filter(p => p.id !== promotionId) }));
+  }, []);
   
-  if (isLoading) {
-    return <LoadingSpinner />;
-  }
+  const createAppointment = useCallback((appointmentData: Appointment) => {
+    setState(prev => ({ ...prev, appointments: [...prev.appointments, appointmentData] }));
+  }, []);
+
+  const updateAppointmentStatus = useCallback((appointmentId: string, status: AppointmentStatus, paymentConfirmed?: boolean) => {
+      setState(prev => ({
+          ...prev,
+          appointments: prev.appointments.map(appt => 
+              appt.id === appointmentId 
+                  ? { ...appt, status, ...(paymentConfirmed !== undefined && { paymentConfirmed }) }
+                  : appt
+          ),
+      }));
+  }, []);
+
+  const updateClientNotes = useCallback((clientId: string, notes: string) => {
+    setState(prev => ({ ...prev, clients: prev.clients.map(c => c.id === clientId ? { ...c, notes } : c) }));
+  }, []);
+
+  const resetClientPassword = useCallback((clientId: string) => {
+    const newPassword = Math.random().toString(36).slice(-8);
+    setState(prev => ({
+        ...prev,
+        clients: prev.clients.map(c => c.id === clientId ? { ...c, password: newPassword } : c)
+    }));
+    return newPassword;
+  }, []);
+
+  const updateBrandingSettings = useCallback((branding: BrandingSettings) => {
+    setState(prev => ({ ...prev, settings: { ...prev.settings, branding } }));
+  }, []);
+
+  const updatePixSettings = useCallback((pix: AppSettings['pixCredentials']) => {
+    setState(prev => ({ ...prev, settings: { ...prev.settings, pixCredentials: pix } }));
+  }, []);
+
+  const updateMaintenanceMode = useCallback((maintenance: AppSettings['maintenanceMode']) => {
+    setState(prev => ({ ...prev, settings: { ...prev.settings, maintenanceMode: maintenance } }));
+  }, []);
+
+  const dangerouslyReplaceState = useCallback((newState: AppState) => {
+    setState(newState);
+  }, []);
+
+  const contextValue = useMemo(() => ({
+      state, currentUser, login, logout, register, resetPassword, isAdminView, setIsAdminView,
+      addOrUpdateService, deleteService, addOrUpdatePromotion, deletePromotion,
+      createAppointment, updateAppointmentStatus, updateClientNotes, resetClientPassword,
+      updateBrandingSettings, updatePixSettings, updateMaintenanceMode,
+      dangerouslyReplaceState
+  }), [state, currentUser, login, logout, register, resetPassword, isAdminView,
+      addOrUpdateService, deleteService, addOrUpdatePromotion, deletePromotion,
+      createAppointment, updateAppointmentStatus, updateClientNotes, resetClientPassword,
+      updateBrandingSettings, updatePixSettings, updateMaintenanceMode,
+      dangerouslyReplaceState]);
+  
+  if (isLoading) return <LoadingSpinner />;
 
   const isMaintenance = state.settings.maintenanceMode.enabled;
   const isAdmin = currentUser?.role === 'admin';
@@ -441,34 +426,21 @@ export default function App() {
   return (
     <AppContext.Provider value={contextValue}>
       <Suspense fallback={<LoadingSpinner />}>
-        {isMaintenance && !isAdmin ? (
-          <MaintenanceMode />
-        ) : !currentUser ? (
-          <AuthPage />
-        ) : (
+        {isMaintenance && !isAdmin ? <MaintenanceMode /> : !currentUser ? <AuthPage /> : (
           <div className="min-h-screen font-sans text-gray-800 dark:text-gray-200">
             {!isOnline && <SyncStatusIndicator />}
-            
             {isMaintenance && isAdmin && (
                 <div className="bg-yellow-400 text-yellow-900 text-center p-2 z-[100] flex items-center justify-center text-sm shadow-lg sticky top-0 font-semibold">
                     <AlertTriangleIcon className="h-5 w-5 mr-2" />
                     MODO MANUTENÇÃO ATIVO
                 </div>
             )}
-
             <div className={!isOnline ? 'pt-10' : ''}>
               {isAdminView ? <AdminView /> : <ClientView />}
             </div>
-            
             {installPromptEvent && !isAdminView && <PWAInstallPrompt onInstall={handleInstallClick} />}
-
             {currentUser.role === 'admin' && !isAdminView && (
-              <button
-                onClick={() => setIsAdminView(true)}
-                className="fixed bottom-20 left-4 z-50 bg-secondary text-white pl-3 pr-4 py-3 rounded-full shadow-lg hover:bg-secondary-dark transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary flex items-center gap-2"
-                aria-label="Voltar ao Painel do Admin"
-                title="Voltar ao Painel do Admin"
-              >
+              <button onClick={() => setIsAdminView(true)} className="fixed bottom-20 left-4 z-50 bg-secondary text-white pl-3 pr-4 py-3 rounded-full shadow-lg hover:bg-secondary-dark transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary flex items-center gap-2" title="Voltar ao Painel do Admin">
                 <ShieldCheckIcon className="h-6 w-6" />
                 <span className="font-semibold text-sm">Voltar ao Admin</span>
               </button>

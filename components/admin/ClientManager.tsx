@@ -3,45 +3,30 @@ import { useAppContext } from '../../App';
 import { Client } from '../../types';
 
 const ClientManager: React.FC = () => {
-    const { state, setState } = useAppContext();
+    const { state, updateClientNotes, resetClientPassword } = useAppContext();
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
     const handleNoteChange = (clientId: string, notes: string) => {
-        setState(prev => ({
-            ...prev,
-            clients: prev.clients.map(c => c.id === clientId ? { ...c, notes } : c),
-        }));
+        updateClientNotes(clientId, notes);
         // also update selectedClient if it's the one being edited
         if (selectedClient && selectedClient.id === clientId) {
             setSelectedClient(prev => prev ? { ...prev, notes } : null);
         }
     };
-    
-    const generateRandomPassword = () => {
-        return Math.random().toString(36).slice(-8);
-    };
 
-    const handleResetPassword = (clientId: string) => {
-        const clientToUpdate = state.clients.find(c => c.id === clientId);
+    const handleResetPassword = (clientToUpdate: Client) => {
         if (!clientToUpdate) return;
 
         if (!window.confirm(`Tem certeza que deseja resetar a senha do cliente ${clientToUpdate.name}?`)) {
             return;
         }
         
-        const newPassword = generateRandomPassword();
-        const updatedClient = { ...clientToUpdate, password: newPassword };
-
-        // Update the main state
-        setState(prev => ({
-            ...prev,
-            clients: prev.clients.map(c => (c.id === clientId ? updatedClient : c)),
-        }));
-
+        const newPassword = resetClientPassword(clientToUpdate.id);
+        
         // BUG FIX: Update the local state to keep the UI in sync
-        setSelectedClient(updatedClient);
+        setSelectedClient(prev => prev ? {...prev, password: newPassword} : null);
 
-        alert(`Senha resetada com sucesso!\n\nNova senha para ${updatedClient.name}: ${newPassword}\n\nPor favor, informe ao cliente.`);
+        alert(`Senha resetada com sucesso!\n\nNova senha para ${clientToUpdate.name}: ${newPassword}\n\nPor favor, informe ao cliente.`);
     };
 
     const clientAppointments = selectedClient ? state.appointments.filter(a => a.clientId === selectedClient.id) : [];
@@ -68,7 +53,7 @@ const ClientManager: React.FC = () => {
                     <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
                         <div className="flex justify-between items-start mb-4">
                             <h3 className="text-2xl font-bold">{selectedClient.name}</h3>
-                            <button onClick={() => handleResetPassword(selectedClient.id)} className="btn-secondary text-white text-sm font-bold py-1 px-3 rounded-lg">Resetar Senha</button>
+                            <button onClick={() => handleResetPassword(selectedClient)} className="btn-secondary text-white text-sm font-bold py-1 px-3 rounded-lg">Resetar Senha</button>
                         </div>
 
                         <p><strong>Email:</strong> {selectedClient.email}</p>

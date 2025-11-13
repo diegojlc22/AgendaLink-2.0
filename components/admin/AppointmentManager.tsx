@@ -4,34 +4,15 @@ import { Appointment, AppointmentStatus } from '../../types';
 import { CheckCircleIcon, XCircleIcon } from '../common/Icons';
 
 const AppointmentManager: React.FC = () => {
-    const { state, setState } = useAppContext();
+    const { state, updateAppointmentStatus } = useAppContext();
     const { appointments, services, clients } = state;
 
-    const handleStatusChange = (id: string, newStatus: AppointmentStatus) => {
-        setState(prev => ({
-            ...prev,
-            appointments: prev.appointments.map(appt => 
-                appt.id === id ? { ...appt, status: newStatus } : appt
-            ),
-        }));
-    };
-
     const handleConfirmPayment = (id: string) => {
-        setState(prev => ({
-            ...prev,
-            appointments: prev.appointments.map(appt => 
-                appt.id === id ? { ...appt, status: AppointmentStatus.Confirmed, paymentConfirmed: true } : appt
-            ),
-        }));
+        updateAppointmentStatus(id, AppointmentStatus.Confirmed, true);
     };
     
     const handleRejectPayment = (id: string) => {
-        setState(prev => ({
-            ...prev,
-            appointments: prev.appointments.map(appt => 
-                appt.id === id ? { ...appt, status: AppointmentStatus.PaymentNotIdentified, paymentConfirmed: false } : appt
-            ),
-        }));
+        updateAppointmentStatus(id, AppointmentStatus.PaymentNotIdentified, false);
     };
 
     const sortedAppointments = [...(appointments || [])].sort((a,b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
@@ -54,7 +35,7 @@ const AppointmentManager: React.FC = () => {
                         </thead>
                         <tbody>
                             {sortedAppointments.map((appt, index) => {
-                                if (!appt || !appt.id) return null; // Prevent rendering malformed appointment objects
+                                if (!appt || !appt.id) return null;
 
                                 const client = clients.find(c => c.id === appt.clientId);
                                 const service = services.find(s => s.id === appt.serviceId);
@@ -82,8 +63,8 @@ const AppointmentManager: React.FC = () => {
                                         <td className="px-5 py-5 text-sm">
                                             {appt.status === AppointmentStatus.Pending && appt.paymentMethod === 'Local' && (
                                                 <div className="flex space-x-2 items-center">
-                                                    <button onClick={() => handleStatusChange(appt.id, AppointmentStatus.Confirmed)} className="text-green-600 hover:text-green-900"><CheckCircleIcon className="w-6 h-6"/></button>
-                                                    <button onClick={() => handleStatusChange(appt.id, AppointmentStatus.Cancelled)} className="text-red-600 hover:text-red-900"><XCircleIcon className="w-6 h-6"/></button>
+                                                    <button onClick={() => updateAppointmentStatus(appt.id, AppointmentStatus.Confirmed)} className="text-green-600 hover:text-green-900"><CheckCircleIcon className="w-6 h-6"/></button>
+                                                    <button onClick={() => updateAppointmentStatus(appt.id, AppointmentStatus.Cancelled)} className="text-red-600 hover:text-red-900"><XCircleIcon className="w-6 h-6"/></button>
                                                 </div>
                                             )}
                                             {appt.status === AppointmentStatus.AwaitingConfirmation && (
@@ -94,7 +75,7 @@ const AppointmentManager: React.FC = () => {
                                             )}
                                              {appt.status === AppointmentStatus.Confirmed && (
                                                 <div className="flex space-x-2">
-                                                     <button onClick={() => handleStatusChange(appt.id, AppointmentStatus.Completed)} className="text-blue-600 hover:text-blue-900 text-xs font-bold">Finalizar</button>
+                                                     <button onClick={() => updateAppointmentStatus(appt.id, AppointmentStatus.Completed)} className="text-blue-600 hover:text-blue-900 text-xs font-bold">Finalizar</button>
                                                 </div>
                                             )}
                                         </td>

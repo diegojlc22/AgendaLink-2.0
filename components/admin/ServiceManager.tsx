@@ -12,8 +12,6 @@ const ServiceForm: React.FC<{ service?: Service; onSave: (service: Service) => v
         isFeatured: service?.isFeatured || false,
     });
 
-    // FIX: Destructuring properties from e.target can prevent TypeScript's type narrowing from working correctly.
-    // By using a variable for e.target and accessing its properties directly, we ensure type guards are effective.
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const target = e.target;
         if (target instanceof HTMLInputElement && target.type === 'checkbox') {
@@ -52,28 +50,19 @@ const ServiceForm: React.FC<{ service?: Service; onSave: (service: Service) => v
 };
 
 const ServiceManager: React.FC = () => {
-    const { state, setState } = useAppContext();
+    const { state, addOrUpdateService, deleteService } = useAppContext();
     const [editingService, setEditingService] = useState<Service | null>(null);
     const [isCreating, setIsCreating] = useState(false);
 
     const handleSave = (service: Service) => {
-        setState(prev => {
-            const exists = prev.services.some(s => s.id === service.id);
-            const services = exists
-                ? prev.services.map(s => s.id === service.id ? service : s)
-                : [...prev.services, service];
-            return { ...prev, services };
-        });
+        addOrUpdateService(service);
         setEditingService(null);
         setIsCreating(false);
     };
 
     const handleDelete = (id: string) => {
         if (window.confirm('Tem certeza que deseja excluir este serviço?')) {
-            setState(prev => ({
-                ...prev,
-                services: prev.services.filter(s => s.id !== id),
-            }));
+            deleteService(id);
         }
     };
 

@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../../App';
-import { AppState, BrandingSettings, PixKeyType, Client } from '../../types';
+import { AppState, BrandingSettings, PixKeyType, Client, AppSettings } from '../../types';
 import { DownloadIcon, UploadIcon, TrashIcon } from '../common/Icons';
 import { saveStateToDB } from '../../services/database';
 
 const BrandingSettingsEditor: React.FC = () => {
-    const { state, setState } = useAppContext();
+    const { state, updateBrandingSettings } = useAppContext();
     const [draft, setDraft] = useState<BrandingSettings>(state.settings.branding);
     const [isDirty, setIsDirty] = useState(false);
 
     useEffect(() => {
         setDraft(state.settings.branding);
-        setIsDirty(false); // Reseta o estado "sujo" quando o estado global muda
+        setIsDirty(false);
     }, [state.settings.branding]);
 
     const handleChange = <K extends keyof BrandingSettings>(key: K, value: BrandingSettings[K]) => {
@@ -28,10 +28,7 @@ const BrandingSettingsEditor: React.FC = () => {
     };
 
     const handleSave = () => {
-        setState(prev => ({
-            ...prev,
-            settings: { ...prev.settings, branding: draft }
-        }));
+        updateBrandingSettings(draft);
         setIsDirty(false);
         alert('Configurações de branding salvas com sucesso!');
     };
@@ -87,53 +84,40 @@ const BrandingSettingsEditor: React.FC = () => {
 };
 
 const PixSettingsEditor: React.FC = () => {
-    const { state, setState } = useAppContext();
+    const { state, updatePixSettings } = useAppContext();
     const { pixCredentials } = state.settings;
     
-    const [keyType, setKeyType] = useState<PixKeyType>(pixCredentials.pixKeyType || '');
-    const [keyValue, setKeyValue] = useState(pixCredentials.pixKey || '');
-    const [expirationTime, setExpirationTime] = useState(pixCredentials.pixExpirationTime || 60);
+    const [draft, setDraft] = useState(pixCredentials);
+    const [isDirty, setIsDirty] = useState(false);
 
     useEffect(() => {
-        setKeyType(pixCredentials.pixKeyType || '');
-        setKeyValue(pixCredentials.pixKey || '');
-        setExpirationTime(pixCredentials.pixExpirationTime || 60);
-    }, [pixCredentials]);
+        setDraft(state.settings.pixCredentials);
+        setIsDirty(false);
+    }, [state.settings.pixCredentials]);
+
+    const handleChange = (update: Partial<AppSettings['pixCredentials']>) => {
+        setDraft(prev => ({ ...prev, ...update }));
+        setIsDirty(true);
+    };
 
     const handleKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         let value = e.target.value;
-        if (keyType === 'cpf') {
-            value = value.replace(/\D/g, '')
-                         .replace(/(\d{3})(\d)/, '$1.$2')
-                         .replace(/(\d{3})(\d)/, '$1.$2')
-                         .replace(/(\d{3})(\d{1,2})/, '$1-$2')
-                         .slice(0, 14);
-        } else if (keyType === 'celular') {
-            value = value.replace(/\D/g, '')
-                         .replace(/^(\d{2})(\d)/g, '($1) ')
-                         .replace(/(\d{5})(\d)/, '$1-$2')
-                         .slice(0, 15);
+        if (draft.pixKeyType === 'cpf') {
+            value = value.replace(/\D/g, '').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})/, '$1-$2').slice(0, 14);
+        } else if (draft.pixKeyType === 'celular') {
+            value = value.replace(/\D/g, '').replace(/^(\d{2})(\d)/g, '($1) ').replace(/(\d{5})(\d)/, '$1-$2').slice(0, 15);
         }
-        setKeyValue(value);
+        handleChange({ pixKey: value });
     };
 
     const handleSave = () => {
-        setState(prev => ({
-            ...prev,
-            settings: {
-                ...prev.settings,
-                pixCredentials: {
-                    pixKeyType: keyType,
-                    pixKey: keyValue,
-                    pixExpirationTime: expirationTime,
-                }
-            }
-        }));
+        updatePixSettings(draft);
+        setIsDirty(false);
         alert('Configurações PIX salvas com sucesso!');
     };
-
+    
     const getInputProps = () => {
-        switch(keyType) {
+        switch(draft.pixKeyType) {
             case 'email': return { type: 'email', placeholder: 'seu.email@provedor.com' };
             case 'celular': return { type: 'tel', placeholder: '(11) 99999-9999' };
             case 'cpf': return { type: 'text', placeholder: '123.456.789-00' };
@@ -148,7 +132,7 @@ const PixSettingsEditor: React.FC = () => {
             <p className="text-sm text-gray-500 dark:text-gray-400">Cadastre a chave PIX e o tempo de expiração do QR Code para pagamentos.</p>
             <div>
                 <label className="font-medium text-sm">Tipo de Chave</label>
-                <select value={keyType} onChange={(e) => { setKeyType(e.target.value as PixKeyType); setKeyValue(''); }} className="w-full p-2 mt-1 border rounded-lg bg-white text-gray-900 dark:bg-gray-700 dark:text-white">
+                <select value={draft.pixKeyType} onChange={(e) => handleChange({ pixKeyType: e.target.value as PixKeyType, pixKey: '' })} className="w-full p-2 mt-1 border rounded-lg bg-white text-gray-900 dark:bg-gray-700 dark:text-white">
                     <option value="">Selecione um tipo</option>
                     <option value="cpf">CPF</option>
                     <option value="celular">Celular</option>
@@ -156,32 +140,32 @@ const PixSettingsEditor: React.FC = () => {
                     <option value="aleatoria">Chave Aleatória</option>
                 </select>
             </div>
-            {keyType && (
+            {draft.pixKeyType && (
                 <div>
                     <label className="font-medium text-sm">Chave PIX</label>
                     <input
                         {...getInputProps()}
-                        value={keyValue}
+                        value={draft.pixKey}
                         onChange={handleKeyChange}
                         className="w-full p-2 mt-1 border rounded-lg bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
                         required
                     />
-                     {keyType === 'celular' && <p className="text-xs text-gray-400 mt-1">Insira o DDD + número. O formato `+55` será adicionado para o pagamento.</p>}
+                     {draft.pixKeyType === 'celular' && <p className="text-xs text-gray-400 mt-1">Insira o DDD + número. O formato `+55` será adicionado para o pagamento.</p>}
                 </div>
             )}
             <div>
                 <label className="font-medium text-sm">Tempo de Expiração do PIX (segundos)</label>
                 <input
                     type="number"
-                    value={expirationTime}
-                    onChange={e => setExpirationTime(parseInt(e.target.value, 10) || 0)}
+                    value={draft.pixExpirationTime}
+                    onChange={e => handleChange({ pixExpirationTime: parseInt(e.target.value, 10) || 0 })}
                     className="w-full p-2 mt-1 border rounded-lg bg-white text-gray-900 dark:bg-gray-700 dark:text-white"
                     placeholder="60"
                 />
                 <p className="text-xs text-gray-400 mt-1">Tempo em segundos que o cliente terá para pagar o QR Code. Padrão: 60.</p>
             </div>
             <div className="flex justify-end">
-                <button onClick={handleSave} disabled={!keyType || !keyValue} className="btn-primary text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-400">
+                <button onClick={handleSave} disabled={!isDirty || !draft.pixKeyType || !draft.pixKey} className="btn-primary text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-400">
                     Salvar Configurações PIX
                 </button>
             </div>
@@ -190,7 +174,7 @@ const PixSettingsEditor: React.FC = () => {
 };
 
 const DataManagement: React.FC = () => {
-    const { state, setState } = useAppContext();
+    const { state, dangerouslyReplaceState } = useAppContext();
 
     const handleExport = () => {
         const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(state, null, 2))}`;
@@ -208,7 +192,7 @@ const DataManagement: React.FC = () => {
                 try {
                     const importedState = JSON.parse(event.target?.result as string) as AppState;
                     if (window.confirm('Tem certeza que deseja importar estes dados? A ação substituirá todos os dados atuais.')) {
-                        setState(importedState);
+                        dangerouslyReplaceState(importedState);
                         alert('Backup importado com sucesso!');
                     }
                 } catch (err) {
@@ -223,7 +207,7 @@ const DataManagement: React.FC = () => {
         if (window.confirm('ATENÇÃO: Esta ação é irreversível e irá apagar TODOS os dados do aplicativo (agendamentos, clientes, configurações, etc.) guardados neste navegador. Deseja continuar?')) {
             
             const adminUser: Client = {
-                id: '2', // Manter o ID original do admin para consistência
+                id: '2',
                 name: 'Admin',
                 email: 'admin@admin',
                 phone: '00000000000',
@@ -233,46 +217,22 @@ const DataManagement: React.FC = () => {
 
             const resetState: AppState = {
                 settings: {
-                    branding: {
-                      appName: 'AgendaLink 2.0',
-                      logoUrl: 'https://tailwindui.com/img/logos/mark.svg?color=pink&shade=500',
-                      logoEnabled: true,
-                      colors: {
-                        primary: '#d81b60',
-                        secondary: '#8e24aa',
-                        accent: '#ffb300',
-                      },
-                    },
-                    pixCredentials: {
-                      pixKeyType: '',
-                      pixKey: '',
-                      pixExpirationTime: 60,
-                    },
-                    maintenanceMode: {
-                      enabled: false,
-                      message: 'Estamos em manutenção. Voltamos em breve!',
-                    },
+                    branding: { appName: 'AgendaLink 2.0', logoUrl: 'https://tailwindui.com/img/logos/mark.svg?color=pink&shade=500', logoEnabled: true, colors: { primary: '#d81b60', secondary: '#8e24aa', accent: '#ffb300' } },
+                    pixCredentials: { pixKeyType: '', pixKey: '', pixExpirationTime: 60 },
+                    maintenanceMode: { enabled: false, message: 'Estamos em manutenção. Voltamos em breve!' }
                 },
-                clients: [adminUser],
-                services: [],
-                appointments: [],
-                promotions: [],
-                pixTransactions: [],
+                clients: [adminUser], services: [], appointments: [], promotions: [], pixTransactions: [],
             };
 
             try {
                 await saveStateToDB(resetState);
                 localStorage.removeItem('agendaLinkCurrentUser');
-
                 if ('serviceWorker' in navigator && window.caches) {
                     const keys = await caches.keys();
                     await Promise.all(keys.map(key => caches.delete(key)));
                     const registration = await navigator.serviceWorker.getRegistration();
-                    if (registration) {
-                        await registration.unregister();
-                    }
+                    if (registration) await registration.unregister();
                 }
-
                 alert('Todos os dados foram apagados. A aplicação será recarregada.');
                 window.location.reload();
             } catch(error) {
@@ -307,7 +267,7 @@ const DataManagement: React.FC = () => {
 
 
 const MaintenanceModeManager: React.FC = () => {
-    const { state, setState } = useAppContext();
+    const { state, updateMaintenanceMode } = useAppContext();
     const { maintenanceMode } = state.settings;
 
     const [draft, setDraft] = useState(maintenanceMode);
@@ -318,21 +278,13 @@ const MaintenanceModeManager: React.FC = () => {
         setIsDirty(false);
     }, [maintenanceMode]);
 
-    const handleToggle = (enabled: boolean) => {
-        setDraft(prev => ({ ...prev, enabled }));
-        setIsDirty(true);
-    };
-
-    const handleMessageChange = (message: string) => {
-        setDraft(prev => ({ ...prev, message }));
+    const handleChange = (update: Partial<AppSettings['maintenanceMode']>) => {
+        setDraft(prev => ({ ...prev, ...update }));
         setIsDirty(true);
     };
 
     const handleSave = () => {
-        setState(prev => ({
-            ...prev,
-            settings: { ...prev.settings, maintenanceMode: draft }
-        }));
+        updateMaintenanceMode(draft);
         setIsDirty(false);
         alert('Modo Manutenção atualizado com sucesso!');
     };
@@ -345,7 +297,7 @@ const MaintenanceModeManager: React.FC = () => {
                     type="checkbox"
                     id="maintenanceEnabled"
                     checked={draft.enabled}
-                    onChange={(e) => handleToggle(e.target.checked)}
+                    onChange={(e) => handleChange({ enabled: e.target.checked })}
                     className="h-5 w-5 rounded text-primary focus:ring-primary cursor-pointer"
                 />
                 <label htmlFor="maintenanceEnabled" className="font-medium text-sm cursor-pointer">
@@ -356,7 +308,7 @@ const MaintenanceModeManager: React.FC = () => {
                 <label className="font-medium text-sm">Mensagem de Manutenção</label>
                 <input
                     value={draft.message}
-                    onChange={e => handleMessageChange(e.target.value)}
+                    onChange={e => handleChange({ message: e.target.value })}
                     className="w-full p-2 mt-1 border rounded-lg bg-white text-gray-900 dark:bg-gray-700 dark:text-white disabled:bg-gray-200 dark:disabled:bg-gray-600"
                     disabled={!draft.enabled}
                 />
