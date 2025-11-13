@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../../App';
-import { AppState, BrandingSettings, PixKeyType, Client, AppSettings } from '../../types';
-import { DownloadIcon, UploadIcon, TrashIcon } from '../common/Icons';
-import { INITIAL_APP_STATE } from '../../constants';
+import { BrandingSettings, PixKeyType, AppSettings } from '../../types';
 
 const BrandingSettingsEditor: React.FC = () => {
     const { state, updateBrandingSettings } = useAppContext();
@@ -229,95 +227,6 @@ const MaintenanceModeManager: React.FC = () => {
     );
 };
 
-const DataManager: React.FC = () => {
-    const { state, dangerouslyReplaceState, forceSync } = useAppContext();
-
-    const handleExport = () => {
-        const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(state, null, 2))}`;
-        const link = document.createElement('a');
-        link.href = jsonString;
-        link.download = `agendalink-backup-${new Date().toISOString().split('T')[0]}.json`;
-        link.click();
-    };
-
-    const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = async (event) => {
-                try {
-                    const importedState = JSON.parse(event.target?.result as string) as AppState;
-                    if (window.confirm('Tem certeza que deseja importar estes dados? A ação substituirá TODOS os dados atuais no servidor e em todos os dispositivos.')) {
-                        await dangerouslyReplaceState(importedState);
-                        alert('Backup importado com sucesso! Os dados foram atualizados.');
-                        await forceSync();
-                    }
-                } catch (err) {
-                    alert('Erro ao importar o arquivo de backup. Verifique se o arquivo é válido.');
-                }
-            };
-            reader.readAsText(file);
-        }
-        e.target.value = '';
-    };
-
-    const handleClearData = async () => {
-        if (window.confirm('ATENÇÃO: Esta ação é irreversível e irá apagar TODOS os dados do servidor e de todos os dispositivos. Deseja continuar?')) {
-            const adminUser: Client = {
-                id: '2', name: 'Admin', email: 'admin@admin', phone: '00000000000', password: 'admin', role: 'admin',
-            };
-             const resetState: AppState = {
-                settings: INITIAL_APP_STATE.settings, // Use as configurações iniciais
-                clients: [adminUser], services: [], appointments: [], promotions: [], pixTransactions: [],
-            };
-
-            try {
-                await dangerouslyReplaceState(resetState);
-                localStorage.removeItem('agendaLinkCurrentUser');
-
-                alert('Todos os dados do servidor foram apagados. A aplicação será recarregada.');
-                window.location.reload();
-
-            } catch(error) {
-                console.error("Falha ao limpar os dados:", error);
-                alert("Ocorreu um erro ao tentar limpar os dados. Verifique o console para mais detalhes.");
-            }
-        }
-    };
-
-    return (
-        <>
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
-                 <h3 className="text-xl font-bold mb-4">Backup e Restauração Manual</h3>
-                 <p className="text-gray-600 dark:text-gray-300 mb-4">
-                    Para uma camada extra de segurança, você pode criar e restaurar backups manuais de todos os dados do seu negócio. Use os botões abaixo para exportar os dados atuais para um arquivo ou importar dados de um backup.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-4 items-start flex-wrap">
-                    <button onClick={handleExport} className="btn-secondary text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2">
-                        <DownloadIcon className="h-5 w-5" />
-                        Exportar Dados
-                    </button>
-                    <label className="btn-primary text-white font-bold py-2 px-4 rounded-lg cursor-pointer flex items-center justify-center gap-2">
-                        <UploadIcon className="h-5 w-5" />
-                        Importar Dados
-                        <input type="file" accept=".json" onChange={handleImport} className="hidden" />
-                    </label>
-                </div>
-            </div>
-
-            <div className="mt-8 bg-red-50 dark:bg-red-900/20 p-6 rounded-xl shadow-lg border-l-4 border-red-500">
-                <h3 className="text-xl font-bold text-red-700 dark:text-red-300">Zona de Perigo</h3>
-                <p className="text-sm text-red-600 dark:text-red-400 mt-2 mb-4">A ação abaixo é irreversível e irá apagar <strong className="font-semibold">todos os dados do servidor permanentemente</strong>. Use com extrema cautela.</p>
-                <button onClick={handleClearData} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2">
-                    <TrashIcon className="h-5 w-5" />
-                    Resetar Servidor (Hard Reset)
-                </button>
-            </div>
-        </>
-    );
-};
-
-
 const SettingsManager: React.FC = () => {
     return (
         <div>
@@ -332,7 +241,6 @@ const SettingsManager: React.FC = () => {
                  <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
                     <MaintenanceModeManager />
                 </div>
-                <DataManager />
             </div>
         </div>
     );

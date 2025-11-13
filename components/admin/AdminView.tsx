@@ -3,6 +3,8 @@
 
 
 
+
+
 import React, { useState, lazy, Suspense } from 'react';
 // FIX: Import missing icons CheckCircleIcon and XCircleIcon.
 import { CalendarIcon, CogIcon, DashboardIcon, TagIcon, UsersIcon, PercentageIcon, MenuIcon, XIcon, SyncIcon, CheckCircleIcon, XCircleIcon } from '../common/Icons';
@@ -15,9 +17,10 @@ const ServiceManager = lazy(() => import('./ServiceManager'));
 const ClientManager = lazy(() => import('./ClientManager'));
 const PromotionManager = lazy(() => import('./PromotionManager'));
 const SettingsManager = lazy(() => import('./SettingsManager'));
+const SyncManager = lazy(() => import('./SyncManager'));
 
 
-type AdminSection = 'dashboard' | 'appointments' | 'services' | 'clients' | 'promotions' | 'settings';
+type AdminSection = 'dashboard' | 'appointments' | 'services' | 'clients' | 'promotions' | 'settings' | 'sync';
 
 const SECTION_TITLES: { [key in AdminSection]: string } = {
     dashboard: 'Dashboard',
@@ -26,6 +29,7 @@ const SECTION_TITLES: { [key in AdminSection]: string } = {
     clients: 'Clientes',
     promotions: 'Promoções',
     settings: 'Configurações',
+    sync: 'Sincronização e Backup',
 };
 
 const RealtimeSyncIndicator: React.FC<{ syncState: SyncState, onSync: () => void }> = ({ syncState, onSync }) => {
@@ -101,6 +105,7 @@ const AdminSidebar: React.FC<{
                     <NavItem section="promotions" label="Promoções" icon={<PercentageIcon className="h-6 w-6" />} />
                     <NavItem section="clients" label="Clientes" icon={<UsersIcon className="h-6 w-6" />} />
                     <NavItem section="settings" label="Configurações" icon={<CogIcon className="h-6 w-6" />} />
+                    <NavItem section="sync" label="Sincronização" icon={<SyncIcon className="h-6 w-6" />} />
                 </ul>
             </nav>
             <div className="px-4 py-2">
@@ -163,6 +168,7 @@ const AdminView: React.FC = () => {
             case 'clients': return <ClientManager />;
             case 'promotions': return <PromotionManager />;
             case 'settings': return <SettingsManager />;
+            case 'sync': return <SyncManager />;
             default: return <Dashboard />;
         }
     };
