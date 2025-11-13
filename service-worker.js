@@ -24,12 +24,12 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Estratégia: Network First, falling back to Cache
-    // Isso garante que o usuário sempre veja o conteúdo mais recente se estiver online.
-    // O cache é usado apenas como um fallback para o modo offline.
+    // Estratégia: Stale-While-Revalidate
+    // Responde com o cache imediatamente para velocidade (stale),
+    // depois busca na rede para atualizar o cache para a próxima vez (revalidate).
     event.respondWith(
-        fetch(event.request)
-            .then((networkResponse) => {
+        caches.match(event.request).then((cachedResponse) => {
+            const fetchPromise = fetch(event.request).then((networkResponse) => {
                 // Se a requisição à rede for bem-sucedida, clonamos a resposta e a armazenamos no cache.
                 if (networkResponse && networkResponse.status === 200) {
                     const responseToCache = networkResponse.clone();
@@ -38,16 +38,15 @@ self.addEventListener('fetch', (event) => {
                     });
                 }
                 return networkResponse;
-            })
-            .catch(() => {
-                // Se a requisição à rede falhar (ex: offline), tentamos servir do cache.
-                return caches.match(event.request).then((cachedResponse) => {
-                    if (cachedResponse) {
-                        return cachedResponse;
-                    }
-                    // Se não houver resposta no cache, a requisição falhará (o que é esperado offline se o recurso nunca foi visitado)
-                });
-            })
+            }).catch(err => {
+                console.warn("Fetch failed; returning offline page instead.", err);
+                // Opcional: retornar uma página de fallback offline genérica se nem o cache nem a rede funcionarem
+            });
+
+            // Retorna a resposta do cache imediatamente se existir, caso contrário, espera a resposta da rede.
+            // A requisição de rede para revalidação do cache já foi iniciada.
+            return cachedResponse || fetchPromise;
+        })
     );
 });
 

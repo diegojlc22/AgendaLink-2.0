@@ -61,7 +61,7 @@ const MaintenanceMode: React.FC = () => {
         }
     };
 
-    const handleAdminLogin = (e: React.FormEvent) => {
+    const handleAdminLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         try {
@@ -70,7 +70,7 @@ const MaintenanceMode: React.FC = () => {
             if (user?.role !== 'admin') {
                 throw new Error('Acesso negado. Apenas administradores podem entrar durante a manutenção.');
             }
-            login(email, password); // This will update currentUser and re-render App
+            await login(email, password); // This will update currentUser and re-render App
         } catch (err: any) {
             setError(err.message);
         }
@@ -350,28 +350,107 @@ export default function App() {
     return newPassword;
   }, [forceSync]);
 
-  // --- Wrapper para ações de modificação de estado ---
-  const handleStateMutation = useCallback(async (action: Promise<any>) => {
-    setSyncState('syncing');
-    try {
-        await action;
-        await forceSync(); // Refetch a fonte da verdade
-    } catch (error) {
-        console.error("Mutation failed:", error);
+  // --- Funções de Modificação de Estado (Offline-First) ---
+  const createOptimisticUpdater = <T,>(
+    // A função que chama a API
+    apiCall: (...args: T[]) => Promise<any>,
+    // A função que calcula o novo estado local
+    stateModifier: (prevState: AppState, ...args: T[]) => AppState,
+    // (Opcional) Ação a ser executada em caso de falha de sincronização
+    onSyncFail?: (originalState: AppState) => AppState
+  ) => {
+    return async (...args: T[]) => {
+      let originalState: AppState | null = null;
+      
+      // 1. Atualização Otimista
+      setState(prevState => {
+        originalState = prevState;
+        return stateModifier(prevState, ...args);
+      });
+
+      // 2. Sincronização em Segundo Plano
+      setSyncState('syncing');
+      try {
+        await apiCall(...args);
+        setSyncState('synced');
+      } catch (error) {
+        console.error(`Sync failed for ${apiCall.name}:`, error);
         setSyncState('error');
-        alert(error instanceof Error ? error.message : "Ocorreu um erro.");
-        // Opcional: poderia reverter para o estado anterior se tivéssemos otimismo
-    }
-  }, [forceSync]);
+        alert("A sincronização falhou. Suas alterações foram salvas localmente, mas a operação foi revertida para manter a consistência com o servidor.");
+        
+        // 3. Rollback em caso de falha
+        if (originalState) {
+          const finalState = onSyncFail ? onSyncFail(originalState) : originalState;
+          setState(finalState);
+        } else {
+          await forceSync();
+        }
+      }
+    };
+  };
+
+  const addOrUpdateService = createOptimisticUpdater(api.apiAddOrUpdateService, (prevState, service: Service) => {
+    const services = [...prevState.services];
+    const index = services.findIndex(s => s.id === service.id);
+    if (index > -1) services[index] = service;
+    else services.push(service);
+    return { ...prevState, services };
+  });
+
+  const deleteService = createOptimisticUpdater(api.apiDeleteService, (prevState, serviceId: string) => ({
+      ...prevState,
+      services: prevState.services.filter(s => s.id !== serviceId),
+  }));
+
+  const addOrUpdatePromotion = createOptimisticUpdater(api.apiAddOrUpdatePromotion, (prevState, promotion: Promotion) => {
+      const promotions = [...prevState.promotions];
+      const index = promotions.findIndex(p => p.id === promotion.id);
+      if (index > -1) promotions[index] = promotion;
+      else promotions.push(promotion);
+      return { ...prevState, promotions };
+  });
+
+  const deletePromotion = createOptimisticUpdater(api.apiDeletePromotion, (prevState, promotionId: string) => ({
+      ...prevState,
+      promotions: prevState.promotions.filter(p => p.id !== promotionId),
+  }));
   
-  // --- Funções de Modificação de Estado ---
-  const addOrUpdateService = useCallback((service: Service) => handleStateMutation(api.apiAddOrUpdateService(service)), [handleStateMutation]);
-  const deleteService = useCallback((serviceId: string) => handleStateMutation(api.apiDeleteService(serviceId)), [handleStateMutation]);
-  const addOrUpdatePromotion = useCallback((promotion: Promotion) => handleStateMutation(api.apiAddOrUpdatePromotion(promotion)), [handleStateMutation]);
-  const deletePromotion = useCallback((promotionId: string) => handleStateMutation(api.apiDeletePromotion(promotionId)), [handleStateMutation]);
-  const createAppointment = useCallback((appointmentData: Appointment) => handleStateMutation(api.apiCreateAppointment(appointmentData)), [handleStateMutation]);
-  const updateAppointmentStatus = useCallback((appointmentId: string, status: AppointmentStatus, paymentConfirmed?: boolean) => handleStateMutation(api.apiUpdateAppointmentStatus(appointmentId, status, paymentConfirmed)), [handleStateMutation]);
-  const updateClientNotes = useCallback((clientId: string, notes: string) => handleStateMutation(api.apiUpdateClientNotes(clientId, notes)), [handleStateMutation]);
+  const createAppointment = createOptimisticUpdater(api.apiCreateAppointment, (prevState, appointment: Appointment) => ({
+      ...prevState,
+      appointments: [...prevState.appointments, appointment],
+  }));
+
+  const updateAppointmentStatus = createOptimisticUpdater(api.apiUpdateAppointmentStatus, (prevState, appointmentId: string, status: AppointmentStatus, paymentConfirmed?: boolean) => {
+      const appointments = prevState.appointments.map(a => {
+          if (a.id === appointmentId) {
+              return { ...a, status, paymentConfirmed: paymentConfirmed !== undefined ? paymentConfirmed : a.paymentConfirmed };
+          }
+          return a;
+      });
+      return { ...prevState, appointments };
+  });
+
+  const updateClientNotes = createOptimisticUpdater(api.apiUpdateClientNotes, (prevState, clientId: string, notes: string) => ({
+      ...prevState,
+      clients: prevState.clients.map(c => c.id === clientId ? { ...c, notes } : c),
+  }));
+
+  const updateBrandingSettings = createOptimisticUpdater(api.apiUpdateBrandingSettings, (prevState, branding: BrandingSettings) => ({
+      ...prevState,
+      settings: { ...prevState.settings, branding },
+  }));
+
+  const updatePixSettings = createOptimisticUpdater(api.apiUpdatePixSettings, (prevState, pix: AppSettings['pixCredentials']) => ({
+      ...prevState,
+      settings: { ...prevState.settings, pixCredentials: pix },
+  }));
+
+  const updateMaintenanceMode = createOptimisticUpdater(api.apiUpdateMaintenanceMode, (prevState, maintenance: AppSettings['maintenanceMode']) => ({
+      ...prevState,
+      settings: { ...prevState.settings, maintenanceMode: maintenance },
+  }));
+
+  // Funções que devem ser autoritativas (não otimistas)
   const resetClientPassword = useCallback(async (clientId: string) => {
       setSyncState('syncing');
       try {
@@ -384,12 +463,19 @@ export default function App() {
           alert(error instanceof Error ? error.message : "Ocorreu um erro.");
           throw error;
       }
-  }, [forceSync, handleStateMutation]);
-  const updateBrandingSettings = useCallback((branding: BrandingSettings) => handleStateMutation(api.apiUpdateBrandingSettings(branding)), [handleStateMutation]);
-  const updatePixSettings = useCallback((pix: AppSettings['pixCredentials']) => handleStateMutation(api.apiUpdatePixSettings(pix)), [handleStateMutation]);
-  const updateMaintenanceMode = useCallback((maintenance: AppSettings['maintenanceMode']) => handleStateMutation(api.apiUpdateMaintenanceMode(maintenance)), [handleStateMutation]);
-  const dangerouslyReplaceState = useCallback((newState: AppState) => handleStateMutation(api.apiDangerouslyReplaceState(newState)), [handleStateMutation]);
+  }, [forceSync]);
 
+  const dangerouslyReplaceState = useCallback(async (newState: AppState) => {
+    setSyncState('syncing');
+    try {
+        await api.apiDangerouslyReplaceState(newState);
+        await forceSync(); // Busca o novo estado que acabamos de enviar
+    } catch (error) {
+        console.error("Data replacement failed:", error);
+        setSyncState('error');
+        alert(error instanceof Error ? error.message : "Ocorreu um erro ao substituir os dados.");
+    }
+  }, [forceSync]);
 
   const contextValue = useMemo(() => ({
       state, currentUser, login, logout, register, resetPassword, isAdminView, setIsAdminView,
