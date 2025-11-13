@@ -5,7 +5,7 @@ import ClientView from './components/client/ClientView';
 import AdminView from './components/admin/AdminView';
 import AuthPage from './components/auth/AuthPage';
 import PWAInstallPrompt from './components/common/PWAInstallPrompt';
-import { AlertTriangleIcon, WifiOffIcon, ShieldCheckIcon } from './components/common/Icons';
+import { AlertTriangleIcon, WifiOffIcon, ShieldCheckIcon, UsersIcon } from './components/common/Icons';
 import { initDatabase, loadStateFromDB, saveStateToDB } from './services/database';
 
 type AppContextType = {
@@ -16,6 +16,8 @@ type AppContextType = {
   logout: () => void;
   register: (newUser: Omit<Client, 'id'>) => void;
   resetPassword: (email: string) => string;
+  isAdminView: boolean;
+  setIsAdminView: (isAdmin: boolean) => void;
 };
 
 // This interface is needed because it's not a standard part of the TS DOM library yet.
@@ -135,18 +137,6 @@ const MaintenanceMode: React.FC = () => {
         </div>
     );
 };
-
-
-const ViewToggleButton: React.FC<{ isAdminView: boolean; setIsAdminView: (isAdmin: boolean) => void }> = ({ isAdminView, setIsAdminView }) => (
-  <div className="fixed bottom-4 right-4 z-50">
-    <button
-      onClick={() => setIsAdminView(!isAdminView)}
-      className="bg-secondary text-white px-4 py-2 rounded-full shadow-lg hover:bg-secondary-dark transition-transform hover:scale-105"
-    >
-      {isAdminView ? 'Ver como Cliente' : 'Painel Admin'}
-    </button>
-  </div>
-);
 
 const SyncStatusIndicator: React.FC = () => (
     <div className="fixed top-0 left-0 right-0 bg-yellow-500 text-white text-center p-2 z-[100] flex items-center justify-center text-sm shadow-lg">
@@ -338,7 +328,7 @@ export default function App() {
   }, [state.clients, setState]);
 
 
-  const contextValue = useMemo(() => ({ state, setState, currentUser, login, logout, register, resetPassword }), [state, currentUser, login, logout, register, resetPassword, setState]);
+  const contextValue = useMemo(() => ({ state, setState, currentUser, login, logout, register, resetPassword, isAdminView, setIsAdminView }), [state, currentUser, login, logout, register, resetPassword, setState, isAdminView, setIsAdminView]);
   
   if (isLoading) {
     return (
@@ -372,8 +362,18 @@ export default function App() {
             {isAdminView ? <AdminView /> : <ClientView />}
           </div>
           
-          {isAdmin && <ViewToggleButton isAdminView={isAdminView} setIsAdminView={setIsAdminView} />}
           {installPromptEvent && !isAdminView && <PWAInstallPrompt onInstall={handleInstallClick} />}
+
+          {currentUser.role === 'admin' && (
+            <button
+              onClick={() => setIsAdminView(!isAdminView)}
+              className="fixed bottom-20 left-4 z-50 bg-secondary text-white p-4 rounded-full shadow-lg hover:bg-secondary-dark transition-all duration-300 transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary"
+              aria-label={isAdminView ? "Ver como Cliente" : "Voltar ao Painel do Admin"}
+              title={isAdminView ? "Ver como Cliente" : "Voltar ao Painel do Admin"}
+            >
+              {isAdminView ? <UsersIcon className="h-6 w-6" /> : <ShieldCheckIcon className="h-6 w-6" />}
+            </button>
+          )}
         </div>
       )}
     </AppContext.Provider>
