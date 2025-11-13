@@ -228,15 +228,22 @@ export default function App() {
   // Effect for multi-tab state sync via BroadcastChannel
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-        const receivedState = JSON.parse(event.data);
-        // Use the functional update form of setState to get the latest state
-        // without needing `state` in the dependency array. This prevents stale closures.
-        setState(currentState => {
-            if (JSON.stringify(currentState) !== JSON.stringify(receivedState)) {
-                return receivedState;
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'STATE_UPDATED') {
+            const receivedState = data.payload;
+            setState(currentState => {
+                if (JSON.stringify(currentState) !== JSON.stringify(receivedState)) {
+                    return receivedState;
+                }
+                return currentState;
+            });
+        } else if (data.type === 'CONFIG_UPDATED') {
+            // This is a critical update, prompt user to reload to get all new assets and manifest
+            if (window.confirm('As configurações da aplicação foram atualizadas pelo administrador. Deseja recarregar a página para ver as mudanças?')) {
+                window.location.reload();
             }
-            return currentState;
-        });
+        }
     };
     channel.addEventListener('message', handleMessage);
 
@@ -347,8 +354,14 @@ export default function App() {
   useEffect(() => {
     if (isLoading) return; // Não salva o estado inicial antes de carregar do DB
     saveStateToDB(state);
-    const stateString = JSON.stringify(state);
-    channel.postMessage(stateString);
+    
+    // Send a structured message for better handling on the receiving end
+    const message = {
+        type: 'STATE_UPDATED',
+        payload: state,
+    };
+    channel.postMessage(JSON.stringify(message));
+
     applyBranding(state.settings.branding);
   }, [state, isLoading, applyBranding]);
 

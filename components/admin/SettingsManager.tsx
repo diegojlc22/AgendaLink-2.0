@@ -4,6 +4,13 @@ import { AppState, BrandingSettings, PixKeyType, Client } from '../../types';
 import { DownloadIcon, UploadIcon, TrashIcon } from '../common/Icons';
 import { saveStateToDB } from '../../services/database';
 
+const channel = new BroadcastChannel('agenda-link-state-sync');
+
+// Helper function to notify other tabs about a critical config update
+const notifyConfigUpdate = () => {
+    channel.postMessage(JSON.stringify({ type: 'CONFIG_UPDATED' }));
+};
+
 const BrandingSettingsEditor: React.FC = () => {
     const { state, setState } = useAppContext();
     const { branding } = state.settings;
@@ -13,6 +20,7 @@ const BrandingSettingsEditor: React.FC = () => {
             ...prev,
             settings: { ...prev.settings, branding: { ...prev.settings.branding, [key]: value } }
         }));
+        notifyConfigUpdate();
     };
 
     const handleColorChange = (colorName: keyof BrandingSettings['colors'], value: string) => {
@@ -92,17 +100,22 @@ const PixSettingsEditor: React.FC = () => {
     };
 
     const handleSave = () => {
-        setState(prev => ({
-            ...prev,
-            settings: {
-                ...prev.settings,
-                pixCredentials: {
-                    pixKeyType: keyType,
-                    pixKey: keyValue,
-                    pixExpirationTime: expirationTime,
+        setState(prev => {
+            const newState = {
+                ...prev,
+                settings: {
+                    ...prev.settings,
+                    pixCredentials: {
+                        pixKeyType: keyType,
+                        pixKey: keyValue,
+                        pixExpirationTime: expirationTime,
+                    }
                 }
-            }
-        }));
+            };
+            return newState;
+        });
+        // FIX: The setState from `useState` does not accept a callback. The side effects are called after the state update is dispatched.
+        notifyConfigUpdate();
         alert('Configurações PIX salvas com sucesso!');
     };
 
@@ -285,10 +298,15 @@ const MaintenanceModeManager: React.FC = () => {
     const { maintenanceMode } = state.settings;
 
     const toggleMaintenance = () => {
-        setState(prev => ({
-            ...prev,
-            settings: { ...prev.settings, maintenanceMode: { ...prev.settings.maintenanceMode, enabled: !maintenanceMode.enabled } }
-        }));
+        setState(prev => {
+            const newState = {
+                ...prev,
+                settings: { ...prev.settings, maintenanceMode: { ...prev.settings.maintenanceMode, enabled: !maintenanceMode.enabled } }
+            };
+            return newState;
+        });
+        // FIX: The setState from `useState` does not accept a callback. The side effect is called after the state update is dispatched.
+        notifyConfigUpdate();
     };
     
     const handleMessageChange = (message: string) => {
@@ -296,6 +314,8 @@ const MaintenanceModeManager: React.FC = () => {
             ...prev,
             settings: { ...prev.settings, maintenanceMode: { ...prev.settings.maintenanceMode, message } }
         }));
+        // FIX: The setState from `useState` does not accept a callback. The side effect is called after the state update is dispatched.
+        notifyConfigUpdate();
     };
 
     return (

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'agendalink-v3'; // Bumped cache version for invalidation
+const CACHE_NAME = 'agendalink-v4'; // Versão do cache incrementada para invalidação
 const urlsToCache = [
   '/',
   '/index.html',
@@ -7,6 +7,8 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', (event) => {
+  // Pular a espera para ativar o novo Service Worker mais rapidamente
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
@@ -17,35 +19,38 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-    // Ignore non-GET requests, chrome-extension requests, and other origins for simplicity.
-    const isCachable = event.request.method === 'GET' &&
-                      !event.request.url.startsWith('chrome-extension://') &&
-                      event.request.url.startsWith('http');
-                      
-    if (!isCachable) {
+    // Ignorar requisições que não sejam GET e extensões do Chrome
+    if (event.request.method !== 'GET' || event.request.url.startsWith('chrome-extension://')) {
         return;
     }
 
-    // Stale-while-revalidate strategy
+    // Estratégia: Network First, falling back to Cache
+    // Isso garante que o usuário sempre veja o conteúdo mais recente se estiver online.
+    // O cache é usado apenas como um fallback para o modo offline.
     event.respondWith(
-        caches.open(CACHE_NAME).then(async (cache) => {
-            const cachedResponse = await cache.match(event.request);
-
-            const fetchPromise = fetch(event.request).then((networkResponse) => {
+        fetch(event.request)
+            .then((networkResponse) => {
+                // Se a requisição à rede for bem-sucedida, clonamos a resposta e a armazenamos no cache.
                 if (networkResponse && networkResponse.status === 200) {
-                    cache.put(event.request, networkResponse.clone());
+                    const responseToCache = networkResponse.clone();
+                    caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(event.request, responseToCache);
+                    });
                 }
                 return networkResponse;
-            }).catch(err => {
-                console.warn('Fetch failed; returning cached response if available.', err);
-            });
-
-            // Return cached response immediately if available, otherwise wait for the network response.
-            // The fetch in the background will update the cache for the next visit.
-            return cachedResponse || fetchPromise;
-        })
+            })
+            .catch(() => {
+                // Se a requisição à rede falhar (ex: offline), tentamos servir do cache.
+                return caches.match(event.request).then((cachedResponse) => {
+                    if (cachedResponse) {
+                        return cachedResponse;
+                    }
+                    // Se não houver resposta no cache, a requisição falhará (o que é esperado offline se o recurso nunca foi visitado)
+                });
+            })
     );
 });
+
 
 self.addEventListener('activate', (event) => {
   const cacheWhitelist = [CACHE_NAME];
@@ -54,10 +59,11 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
           if (cacheWhitelist.indexOf(cacheName) === -1) {
+            console.log('Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
-    })
+    }).then(() => self.clients.claim()) // Garante que o novo SW assuma o controle imediatamente
   );
 });
