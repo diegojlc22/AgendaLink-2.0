@@ -1,12 +1,14 @@
-import React, { useState, createContext, useContext, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, createContext, useContext, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { AppState, BrandingSettings, Client } from './types';
 import { INITIAL_APP_STATE } from './constants';
-import ClientView from './components/client/ClientView';
-import AdminView from './components/admin/AdminView';
-import AuthPage from './components/auth/AuthPage';
 import PWAInstallPrompt from './components/common/PWAInstallPrompt';
 import { AlertTriangleIcon, WifiOffIcon, ShieldCheckIcon, UsersIcon } from './components/common/Icons';
 import { initDatabase, loadStateFromDB, saveStateToDB } from './services/database';
+
+const ClientView = lazy(() => import('./components/client/ClientView'));
+const AdminView = lazy(() => import('./components/admin/AdminView'));
+const AuthPage = lazy(() => import('./components/auth/AuthPage'));
+
 
 type AppContextType = {
   state: AppState;
@@ -143,6 +145,12 @@ const SyncStatusIndicator: React.FC = () => (
         <WifiOffIcon className="h-5 w-5 mr-2" />
         Você está offline. Suas alterações estão sendo salvas localmente.
     </div>
+);
+
+const LoadingSpinner: React.FC = () => (
+  <div className="flex items-center justify-center h-screen">
+    <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
+  </div>
 );
 
 
@@ -331,11 +339,7 @@ export default function App() {
   const contextValue = useMemo(() => ({ state, setState, currentUser, login, logout, register, resetPassword, isAdminView, setIsAdminView }), [state, currentUser, login, logout, register, resetPassword, setState, isAdminView, setIsAdminView]);
   
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   const isMaintenance = state.settings.maintenanceMode.enabled;
@@ -343,39 +347,41 @@ export default function App() {
 
   return (
     <AppContext.Provider value={contextValue}>
-      {isMaintenance && !isAdmin ? (
-        <MaintenanceMode />
-      ) : !currentUser ? (
-        <AuthPage />
-      ) : (
-        <div className="min-h-screen font-sans text-gray-800 dark:text-gray-200">
-          {!isOnline && <SyncStatusIndicator />}
-          
-          {isMaintenance && isAdmin && (
-              <div className="bg-yellow-400 text-yellow-900 text-center p-2 z-[100] flex items-center justify-center text-sm shadow-lg sticky top-0 font-semibold">
-                  <AlertTriangleIcon className="h-5 w-5 mr-2" />
-                  MODO MANUTENÇÃO ATIVO
-              </div>
-          )}
+      <Suspense fallback={<LoadingSpinner />}>
+        {isMaintenance && !isAdmin ? (
+          <MaintenanceMode />
+        ) : !currentUser ? (
+          <AuthPage />
+        ) : (
+          <div className="min-h-screen font-sans text-gray-800 dark:text-gray-200">
+            {!isOnline && <SyncStatusIndicator />}
+            
+            {isMaintenance && isAdmin && (
+                <div className="bg-yellow-400 text-yellow-900 text-center p-2 z-[100] flex items-center justify-center text-sm shadow-lg sticky top-0 font-semibold">
+                    <AlertTriangleIcon className="h-5 w-5 mr-2" />
+                    MODO MANUTENÇÃO ATIVO
+                </div>
+            )}
 
-          <div className={!isOnline ? 'pt-10' : ''}>
-            {isAdminView ? <AdminView /> : <ClientView />}
+            <div className={!isOnline ? 'pt-10' : ''}>
+              {isAdminView ? <AdminView /> : <ClientView />}
+            </div>
+            
+            {installPromptEvent && !isAdminView && <PWAInstallPrompt onInstall={handleInstallClick} />}
+
+            {currentUser.role === 'admin' && (
+              <button
+                onClick={() => setIsAdminView(!isAdminView)}
+                className="fixed bottom-20 left-4 z-50 bg-secondary text-white p-4 rounded-full shadow-lg hover:bg-secondary-dark transition-all duration-300 transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary"
+                aria-label={isAdminView ? "Ver como Cliente" : "Voltar ao Painel do Admin"}
+                title={isAdminView ? "Ver como Cliente" : "Voltar ao Painel do Admin"}
+              >
+                {isAdminView ? <UsersIcon className="h-6 w-6" /> : <ShieldCheckIcon className="h-6 w-6" />}
+              </button>
+            )}
           </div>
-          
-          {installPromptEvent && !isAdminView && <PWAInstallPrompt onInstall={handleInstallClick} />}
-
-          {currentUser.role === 'admin' && (
-            <button
-              onClick={() => setIsAdminView(!isAdminView)}
-              className="fixed bottom-20 left-4 z-50 bg-secondary text-white p-4 rounded-full shadow-lg hover:bg-secondary-dark transition-all duration-300 transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary"
-              aria-label={isAdminView ? "Ver como Cliente" : "Voltar ao Painel do Admin"}
-              title={isAdminView ? "Ver como Cliente" : "Voltar ao Painel do Admin"}
-            >
-              {isAdminView ? <UsersIcon className="h-6 w-6" /> : <ShieldCheckIcon className="h-6 w-6" />}
-            </button>
-          )}
-        </div>
-      )}
+        )}
+      </Suspense>
     </AppContext.Provider>
   );
 }

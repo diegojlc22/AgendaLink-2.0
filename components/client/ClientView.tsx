@@ -1,11 +1,11 @@
-
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import Header from '../common/Header';
-import ServiceCatalog from './ServiceCatalog';
-import Promotions from './Promotions';
-import Profile from './Profile';
 import { CalendarIcon, TagIcon, UsersIcon } from '../common/Icons';
+
+const ServiceCatalog = lazy(() => import('./ServiceCatalog'));
+const Promotions = lazy(() => import('./Promotions'));
+const Profile = lazy(() => import('./Profile'));
+
 
 type Tab = 'services' | 'promotions' | 'profile';
 
@@ -61,7 +61,9 @@ const ClientView: React.FC = () => {
     <div className="flex flex-col min-h-screen">
       <Header />
       <main className="flex-grow container mx-auto p-4 pb-20">
-        {renderContent()}
+        <Suspense fallback={<div className="flex items-center justify-center pt-20"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div></div>}>
+          {renderContent()}
+        </Suspense>
       </main>
       <footer className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 shadow-t border-t border-gray-200 dark:border-gray-700">
         <div className="container mx-auto flex justify-around">

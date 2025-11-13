@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import Login from './Login';
-import Register from './Register';
-import ForgotPassword from './ForgotPassword';
+import React, { useState, lazy, Suspense } from 'react';
+
+const Login = lazy(() => import('./Login'));
+const Register = lazy(() => import('./Register'));
+const ForgotPassword = lazy(() => import('./ForgotPassword'));
+
 
 type AuthView = 'login' | 'register' | 'forgotPassword';
 
@@ -23,7 +25,11 @@ const AuthPage: React.FC = () => {
         }
     }
 
-    return renderView();
+    return (
+        <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div></div>}>
+            {renderView()}
+        </Suspense>
+    );
 }
 
 export default AuthPage;

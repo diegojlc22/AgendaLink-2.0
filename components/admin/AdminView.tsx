@@ -1,13 +1,14 @@
 import React, { useState, lazy, Suspense } from 'react';
 import { CalendarIcon, CogIcon, DashboardIcon, TagIcon, UsersIcon, PercentageIcon, MenuIcon, XIcon } from '../common/Icons';
-import AppointmentManager from './AppointmentManager';
-import ServiceManager from './ServiceManager';
-import ClientManager from './ClientManager';
-import SettingsManager from './SettingsManager';
 import { useAppContext } from '../../App';
-import PromotionManager from './PromotionManager';
 
 const Dashboard = lazy(() => import('./Dashboard'));
+const AppointmentManager = lazy(() => import('./AppointmentManager'));
+const ServiceManager = lazy(() => import('./ServiceManager'));
+const ClientManager = lazy(() => import('./ClientManager'));
+const PromotionManager = lazy(() => import('./PromotionManager'));
+const SettingsManager = lazy(() => import('./SettingsManager'));
+
 
 type AdminSection = 'dashboard' | 'appointments' | 'services' | 'clients' | 'promotions' | 'settings';
 

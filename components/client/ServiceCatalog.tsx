@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, lazy, Suspense } from 'react';
 import { useAppContext } from '../../App';
 import { Service } from '../../types';
-import BookingCalendar from './BookingCalendar';
+
+const BookingCalendar = lazy(() => import('./BookingCalendar'));
 
 const ServiceCard: React.FC<{ service: Service; onBook: (service: Service) => void }> = ({ service, onBook }) => (
   <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden transform hover:scale-105 hover:shadow-2xl transition-all duration-300">
@@ -47,7 +48,11 @@ const ServiceCatalog: React.FC = () => {
   }, [services, searchQuery, selectedCategory]);
 
   if (bookingService) {
-    return <BookingCalendar service={bookingService} onBack={() => setBookingService(null)} />;
+    return (
+        <Suspense fallback={<div className="flex items-center justify-center pt-20"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div></div>}>
+            <BookingCalendar service={bookingService} onBack={() => setBookingService(null)} />
+        </Suspense>
+    );
   }
 
   return (
