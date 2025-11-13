@@ -1,71 +1,14 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="pt-BR">
   <head>
-    <meta charset="UTF-8" />
+    <meta charset="UTF--8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AgendaLink 2.0</title>
-    
-    <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#d81b60" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    
-    <!-- NOTE: The manifest link, apple-touch-icon, and apple-mobile-web-app-title are now injected dynamically by App.tsx -->
-
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Adiciona a biblioteca SQL.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
-
-    <style>
-      :root {
-        --color-primary: 216 27 96; /* #D81B60 */
-        --color-secondary: 142 36 170; /* #8E24AA */
-        --color-accent: 255 179 0; /* #FFB300 */
-      }
-      body {
-        font-family: 'Poppins', sans-serif;
-      }
-      .bg-primary { background-color: rgb(var(--color-primary)); }
-      .text-primary { color: rgb(var(--color-primary)); }
-      .border-primary { border-color: rgb(var(--color-primary)); }
-      .ring-primary { --tw-ring-color: rgb(var(--color-primary)); }
-      .hover\:bg-primary-dark:hover { background-color: rgb(var(--color-primary) / 0.9); }
-
-      .bg-secondary { background-color: rgb(var(--color-secondary)); }
-      .text-secondary { color: rgb(var(--color-secondary)); }
-      .border-secondary { border-color: rgb(var(--color-secondary)); }
-      .hover\:bg-secondary-dark:hover { background-color: rgb(var(--color-secondary) / 0.9); }
-      
-      .bg-accent { background-color: rgb(var(--color-accent)); }
-      .text-accent { color: rgb(var(--color-accent)); }
-      .border-accent { border-color: rgb(var(--color-accent)); }
-
-      .btn-primary {
-        background-color: rgb(var(--color-primary));
-        color: white;
-        border-radius: 8px;
-        transition: all 0.3s ease;
-      }
-      .btn-primary:hover {
-        background-color: rgb(var(--color-primary) / 0.9);
-        box-shadow: 0 4px 12px rgb(var(--color-primary) / 0.3);
-      }
-      .btn-secondary {
-        background-color: rgb(var(--color-secondary));
-        color: white;
-        border-radius: 8px;
-        transition: all 0.3s ease;
-      }
-      .btn-secondary:hover {
-        background-color: rgb(var(--color-secondary) / 0.9);
-        box-shadow: 0 4px 12px rgb(var(--color-secondary) / 0.3);
-      }
-    </style>
-<script type="importmap">
+    <title>Agenda Colaborativa PWA</title>
+    <meta name="theme-color" content="#1e293b">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180">
+    <link rel="mask-icon" href="/favicon.svg" color="#FFFFFF">
+  <script type="importmap">
 {
   "imports": {
     "react/": "https://aistudiocdn.com/react@^19.2.0/",
@@ -73,12 +16,20 @@
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
     "recharts": "https://aistudiocdn.com/recharts@^3.4.1",
     "vite": "https://aistudiocdn.com/vite@^7.2.2",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1"
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
+    "path": "https://aistudiocdn.com/path@^0.12.7",
+    "socket.io": "https://aistudiocdn.com/socket.io@^4.8.1",
+    "http": "https://aistudiocdn.com/http@^0.0.1-security",
+    "vite-plugin-pwa": "https://aistudiocdn.com/vite-plugin-pwa@^1.1.0",
+    "cors": "https://aistudiocdn.com/cors@^2.8.5",
+    "express": "https://aistudiocdn.com/express@^5.1.0",
+    "better-sqlite3": "https://aistudiocdn.com/better-sqlite3@^12.4.1",
+    "socket.io-client": "https://aistudiocdn.com/socket.io-client@^4.8.1"
   }
 }
 </script>
 </head>
-  <body class="bg-gray-50 dark:bg-gray-900">
+  <body class="bg-slate-900 text-slate-200">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

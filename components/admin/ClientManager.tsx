@@ -14,6 +14,8 @@ const ClientManager: React.FC = () => {
         }
     };
 
+    // FIX: Make the function async and await the promise from `resetClientPassword`.
+    // This ensures `newPassword` is a string and prevents trying to set a Promise in the state.
     const handleResetPassword = async (clientToUpdate: Client) => {
         if (!clientToUpdate) return;
 
@@ -24,12 +26,13 @@ const ClientManager: React.FC = () => {
         try {
             const newPassword = await resetClientPassword(clientToUpdate.id);
             
-            // Atualiza o estado local para manter a UI em sincronia
+            // BUG FIX: Update the local state to keep the UI in sync
             setSelectedClient(prev => prev ? {...prev, password: newPassword} : null);
 
             alert(`Senha resetada com sucesso!\n\nNova senha para ${clientToUpdate.name}: ${newPassword}\n\nPor favor, informe ao cliente.`);
         } catch (error) {
-            // O erro já é alertado no contexto, mas o catch previne uma rejeição de promessa não tratada.
+            // The error is already alerted in the context's `resetClientPassword`,
+            // but we catch it here to prevent an unhandled promise rejection.
             console.error("Failed to reset password from ClientManager:", error);
         }
     };
