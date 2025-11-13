@@ -59,7 +59,7 @@ export const INITIAL_APP_STATE: AppState = {
   settings: {
     branding: {
       appName: 'AgendaLink 2.0',
-      logoUrl: 'https://tailwindui.com/img/logos/mark.svg?color=pink&shade=500',
+      logoUrl: 'https://camo.githubusercontent.com/820e646a6e2fa4116569b43986df8b44e2d504a28b86f5df41e8a1fc577b812a/68747470733a2f2f7777772e696e666f6d6f6e65792e636f6d2e62722f77702d636f6e74656e742f75706c6f6164732f323031392f30362f7465636e6f6c6f6769612d322e6a70673f773d393030267175616c6974793d37302673747269703d616c6c',
       logoEnabled: true,
       colors: {
         primary: '#d81b60',

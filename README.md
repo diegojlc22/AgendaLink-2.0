@@ -2,7 +2,7 @@
 
 **Sua solução completa e moderna para gestão de beleza e agendamentos, agora como um Progressive Web App (PWA) de alta performance!**
 
-![Banner de Tecnologia](https://www.infomoney.com.br/wp-content/uploads/2019/06/tecnologia-2.jpg?w=900&quality=70&strip=all)
+![Banner de Tecnologia](https://camo.githubusercontent.com/820e646a6e2fa4116569b43986df8b44e2d504a28b86f5df41e8a1fc577b812a/68747470733a2f2f7777772e696e666f6d6f6e65792e636f6d2e62722f77702d636f6e74656e742f75706c6f6164732f323031392f30362f7465636e6f6c6f6769612d322e6a70673f773d393030267175616c6974793d37302673747269703d616c6c)
 
 ---
 
