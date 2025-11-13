@@ -173,99 +173,6 @@ const PixSettingsEditor: React.FC = () => {
     );
 };
 
-const DataManagement: React.FC = () => {
-    const { state, dangerouslyReplaceState } = useAppContext();
-
-    const handleExport = () => {
-        const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(JSON.stringify(state, null, 2))}`;
-        const link = document.createElement('a');
-        link.href = jsonString;
-        link.download = `agendalink-backup-${new Date().toISOString().split('T')[0]}.json`;
-        link.click();
-    };
-
-    const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                try {
-                    const importedState = JSON.parse(event.target?.result as string) as AppState;
-                    if (window.confirm('Tem certeza que deseja importar estes dados? A ação substituirá todos os dados atuais.')) {
-                        dangerouslyReplaceState(importedState);
-                        alert('Backup importado com sucesso!');
-                    }
-                } catch (err) {
-                    alert('Erro ao importar o arquivo de backup. Verifique se o arquivo é válido.');
-                }
-            };
-            reader.readAsText(file);
-        }
-    };
-
-    const handleClearData = async () => {
-        if (window.confirm('ATENÇÃO: Esta ação é irreversível e irá apagar TODOS os dados do aplicativo (agendamentos, clientes, configurações, etc.) guardados neste navegador. Deseja continuar?')) {
-            
-            const adminUser: Client = {
-                id: '2',
-                name: 'Admin',
-                email: 'admin@admin',
-                phone: '00000000000',
-                password: 'admin',
-                role: 'admin',
-            };
-
-            const resetState: AppState = {
-                settings: {
-                    branding: { appName: 'AgendaLink 2.0', logoUrl: 'https://tailwindui.com/img/logos/mark.svg?color=pink&shade=500', logoEnabled: true, colors: { primary: '#d81b60', secondary: '#8e24aa', accent: '#ffb300' } },
-                    pixCredentials: { pixKeyType: '', pixKey: '', pixExpirationTime: 60 },
-                    maintenanceMode: { enabled: false, message: 'Estamos em manutenção. Voltamos em breve!' }
-                },
-                clients: [adminUser], services: [], appointments: [], promotions: [], pixTransactions: [],
-            };
-
-            try {
-                await saveStateToDB(resetState);
-                localStorage.removeItem('agendaLinkCurrentUser');
-                if ('serviceWorker' in navigator && window.caches) {
-                    const keys = await caches.keys();
-                    await Promise.all(keys.map(key => caches.delete(key)));
-                    const registration = await navigator.serviceWorker.getRegistration();
-                    if (registration) await registration.unregister();
-                }
-                alert('Todos os dados foram apagados. A aplicação será recarregada.');
-                window.location.reload();
-            } catch(error) {
-                console.error("Falha ao limpar os dados:", error);
-                alert("Ocorreu um erro ao tentar limpar os dados. Verifique o console para mais detalhes.");
-            }
-        }
-    };
-    
-    return (
-        <div className="space-y-4">
-            <h3 className="text-xl font-bold">Gerenciamento de Dados</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Exporte seus dados para um backup, importe de um arquivo, ou limpe todos os dados do navegador.</p>
-            <div className="flex flex-col sm:flex-row gap-4 items-start flex-wrap">
-                <button onClick={handleExport} className="btn-secondary text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2">
-                    <DownloadIcon className="h-5 w-5" />
-                    Exportar Dados
-                </button>
-                <label className="btn-primary text-white font-bold py-2 px-4 rounded-lg cursor-pointer flex items-center justify-center gap-2">
-                    <UploadIcon className="h-5 w-5" />
-                    Importar Dados
-                    <input type="file" accept=".json" onChange={handleImport} className="hidden" />
-                </label>
-                 <button onClick={handleClearData} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center gap-2">
-                    <TrashIcon className="h-5 w-5" />
-                    Limpar Todos os Dados
-                </button>
-            </div>
-        </div>
-    );
-};
-
-
 const MaintenanceModeManager: React.FC = () => {
     const { state, updateMaintenanceMode } = useAppContext();
     const { maintenanceMode } = state.settings;
@@ -336,9 +243,6 @@ const SettingsManager: React.FC = () => {
                 </div>
                  <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
                     <MaintenanceModeManager />
-                </div>
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg">
-                    <DataManagement />
                 </div>
             </div>
         </div>

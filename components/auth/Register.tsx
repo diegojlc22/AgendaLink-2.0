@@ -12,19 +12,23 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     if (!name || !email || !phone || !password) {
       setError('Todos os campos são obrigatórios.');
       return;
     }
+    setIsLoading(true);
     try {
-      register({ name, email, phone, password, role: 'client' });
+      await register({ name, email, phone, password, role: 'client' });
       // On success, user is logged in by the register function, so the view will change automatically in App.tsx
     } catch (err: any) {
       setError(err.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -74,9 +78,10 @@ const Register: React.FC<RegisterProps> = ({ onSwitchToLogin }) => {
           <div>
             <button
               type="submit"
-              className="w-full px-4 py-2 font-bold text-white rounded-lg btn-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+              disabled={isLoading}
+              className="w-full px-4 py-2 font-bold text-white rounded-lg btn-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:bg-gray-400"
             >
-              Cadastrar
+              {isLoading ? 'Cadastrando...' : 'Cadastrar'}
             </button>
           </div>
         </form>

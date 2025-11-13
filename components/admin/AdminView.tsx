@@ -1,7 +1,11 @@
 
+
+
 import React, { useState, lazy, Suspense } from 'react';
-import { CalendarIcon, CogIcon, DashboardIcon, TagIcon, UsersIcon, PercentageIcon, MenuIcon, XIcon } from '../common/Icons';
+// FIX: Import missing icons CheckCircleIcon and XCircleIcon.
+import { CalendarIcon, CogIcon, DashboardIcon, TagIcon, UsersIcon, PercentageIcon, MenuIcon, XIcon, SyncIcon, CheckCircleIcon, XCircleIcon } from '../common/Icons';
 import { useAppContext } from '../../App';
+import { SyncState } from '../../types';
 
 const Dashboard = lazy(() => import('./Dashboard'));
 const AppointmentManager = lazy(() => import('./AppointmentManager'));
@@ -9,9 +13,10 @@ const ServiceManager = lazy(() => import('./ServiceManager'));
 const ClientManager = lazy(() => import('./ClientManager'));
 const PromotionManager = lazy(() => import('./PromotionManager'));
 const SettingsManager = lazy(() => import('./SettingsManager'));
+const SyncManager = lazy(() => import('./SyncManager'));
 
 
-type AdminSection = 'dashboard' | 'appointments' | 'services' | 'clients' | 'promotions' | 'settings';
+type AdminSection = 'dashboard' | 'appointments' | 'services' | 'clients' | 'promotions' | 'settings' | 'sync';
 
 const SECTION_TITLES: { [key in AdminSection]: string } = {
     dashboard: 'Dashboard',
@@ -20,7 +25,37 @@ const SECTION_TITLES: { [key in AdminSection]: string } = {
     clients: 'Clientes',
     promotions: 'Promoções',
     settings: 'Configurações',
+    sync: 'Sincronização',
 };
+
+const RealtimeSyncIndicator: React.FC<{ syncState: SyncState, onSync: () => void }> = ({ syncState, onSync }) => {
+    const getStatusInfo = () => {
+        switch (syncState) {
+            case 'syncing':
+                return { text: 'Sincronizando...', color: 'text-yellow-400', icon: <SyncIcon className="h-4 w-4 animate-spin" /> };
+            case 'synced':
+                return { text: 'Sincronizado', color: 'text-green-400', icon: <CheckCircleIcon className="h-4 w-4" /> };
+            case 'error':
+                return { text: 'Erro na Sincronização', color: 'text-red-400', icon: <XCircleIcon className="h-4 w-4" /> };
+            default:
+                 return { text: 'Conectado', color: 'text-gray-400', icon: <div className="h-3 w-3 rounded-full bg-green-400"></div> };
+        }
+    };
+
+    const { text, color, icon } = getStatusInfo();
+
+    return (
+        <button
+            onClick={onSync}
+            title={syncState === 'error' ? "Clique para tentar novamente" : "Status da Sincronização"}
+            className="flex items-center space-x-2 text-xs font-medium"
+        >
+            {icon}
+            <span className={color}>{text}</span>
+        </button>
+    );
+};
+
 
 const AdminSidebar: React.FC<{
     activeSection: AdminSection;
@@ -28,7 +63,7 @@ const AdminSidebar: React.FC<{
     isOpen: boolean;
     setIsOpen: (isOpen: boolean) => void;
 }> = ({ activeSection, setActiveSection, isOpen, setIsOpen }) => {
-    const { logout, state, setIsAdminView } = useAppContext();
+    const { logout, state, setIsAdminView, syncState, forceSync } = useAppContext();
 
     const NavItem: React.FC<{ section: AdminSection; label: string; icon: React.ReactNode }> = ({ section, label, icon }) => (
         <li>
@@ -65,6 +100,7 @@ const AdminSidebar: React.FC<{
                     <NavItem section="services" label="Serviços" icon={<TagIcon className="h-6 w-6" />} />
                     <NavItem section="promotions" label="Promoções" icon={<PercentageIcon className="h-6 w-6" />} />
                     <NavItem section="clients" label="Clientes" icon={<UsersIcon className="h-6 w-6" />} />
+                    <NavItem section="sync" label="Sincronização" icon={<SyncIcon className="h-6 w-6" />} />
                     <NavItem section="settings" label="Configurações" icon={<CogIcon className="h-6 w-6" />} />
                 </ul>
             </nav>
@@ -79,7 +115,10 @@ const AdminSidebar: React.FC<{
                     <span className="font-medium">Ver como Cliente</span>
                 </button>
             </div>
-            <div className="p-4 border-t border-gray-700">
+            <div className="p-4 border-t border-gray-700 space-y-4">
+                 <div className="px-2">
+                    <RealtimeSyncIndicator syncState={syncState} onSync={forceSync} />
+                </div>
                 <button
                     onClick={logout}
                     className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg"
@@ -125,6 +164,7 @@ const AdminView: React.FC = () => {
             case 'clients': return <ClientManager />;
             case 'promotions': return <PromotionManager />;
             case 'settings': return <SettingsManager />;
+            case 'sync': return <SyncManager />;
             default: return <Dashboard />;
         }
     };

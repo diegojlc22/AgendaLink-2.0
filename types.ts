@@ -100,6 +100,9 @@ export type AppState = {
   settings: AppSettings;
 };
 
+export type SyncState = 'idle' | 'syncing' | 'synced' | 'error';
+
+
 // Nova arquitetura de contexto para um fluxo de dados controlado
 export interface AppContextType {
   state: AppState;
@@ -107,23 +110,26 @@ export interface AppContextType {
   login: (email: string, password: string) => void;
   logout: () => void;
   register: (newUser: Omit<Client, 'id'>) => void;
-  resetPassword: (email: string) => string; // Para usuários deslogados
+  resetPassword: (email: string) => Promise<string>; // Para usuários deslogados
   isAdminView: boolean;
   setIsAdminView: (isAdmin: boolean) => void;
 
   // Métodos específicos para modificar o estado, substituindo o setState genérico
-  addOrUpdateService: (service: Service) => void;
-  deleteService: (serviceId: string) => void;
-  addOrUpdatePromotion: (promotion: Promotion) => void;
-  deletePromotion: (promotionId: string) => void;
-  updateAppointmentStatus: (appointmentId: string, status: AppointmentStatus, paymentConfirmed?: boolean) => void;
-  createAppointment: (appointmentData: Appointment) => void;
-  updateClientNotes: (clientId: string, notes: string) => void;
-  resetClientPassword: (clientId: string) => string; // Para o painel de admin
+  addOrUpdateService: (service: Service) => Promise<void>;
+  deleteService: (serviceId: string) => Promise<void>;
+  addOrUpdatePromotion: (promotion: Promotion) => Promise<void>;
+  deletePromotion: (promotionId: string) => Promise<void>;
+  updateAppointmentStatus: (appointmentId: string, status: AppointmentStatus, paymentConfirmed?: boolean) => Promise<void>;
+  createAppointment: (appointmentData: Appointment) => Promise<void>;
+  updateClientNotes: (clientId: string, notes: string) => Promise<void>;
+  resetClientPassword: (clientId: string) => Promise<string>; // Para o painel de admin
   
-  updateBrandingSettings: (branding: BrandingSettings) => void;
-  updatePixSettings: (pix: AppSettings['pixCredentials']) => void;
-  updateMaintenanceMode: (maintenance: AppSettings['maintenanceMode']) => void;
+  updateBrandingSettings: (branding: BrandingSettings) => Promise<void>;
+  updatePixSettings: (pix: AppSettings['pixCredentials']) => Promise<void>;
+  updateMaintenanceMode: (maintenance: AppSettings['maintenanceMode']) => Promise<void>;
 
-  dangerouslyReplaceState: (newState: AppState) => void; // Para importação de dados
+  dangerouslyReplaceState: (newState: AppState) => Promise<void>; // Para importação de dados
+
+  syncState: SyncState;
+  forceSync: () => Promise<void>;
 }

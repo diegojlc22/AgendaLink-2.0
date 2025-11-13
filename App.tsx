@@ -1,6 +1,7 @@
 import React, { useState, createContext, useContext, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
-import { AppState, BrandingSettings, Client, Service, Promotion, Appointment, AppointmentStatus, AppSettings, AppContextType } from './types';
+import { AppState, BrandingSettings, Client, Service, Promotion, Appointment, AppointmentStatus, AppSettings, AppContextType, SyncState } from './types';
 import { INITIAL_APP_STATE } from './constants';
+import * as api from './services/api';
 import PWAInstallPrompt from './components/common/PWAInstallPrompt';
 import { AlertTriangleIcon, WifiOffIcon, ShieldCheckIcon, UsersIcon } from './components/common/Icons';
 import { initDatabase, loadStateFromDB, saveStateToDB } from './services/database';
@@ -128,10 +129,10 @@ const MaintenanceMode: React.FC = () => {
     );
 };
 
-const SyncStatusIndicator: React.FC = () => (
+const OfflineIndicator: React.FC = () => (
     <div className="fixed top-0 left-0 right-0 bg-yellow-500 text-white text-center p-2 z-[100] flex items-center justify-center text-sm shadow-lg">
         <WifiOffIcon className="h-5 w-5 mr-2" />
-        Você está offline. Suas alterações estão sendo salvas localmente.
+        Você está offline. As alterações podem não ser sincronizadas com outros dispositivos.
     </div>
 );
 
@@ -145,6 +146,7 @@ const LoadingSpinner: React.FC = () => (
 export default function App() {
   const [state, setState] = useState<AppState>(INITIAL_APP_STATE);
   const [isLoading, setIsLoading] = useState(true);
+  const [syncState, setSyncState] = useState<SyncState>('idle');
   
   const [currentUser, setCurrentUser] = useState<Omit<Client, 'password'> | null>(() => {
     try {
@@ -164,30 +166,45 @@ export default function App() {
   const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
+  const forceSync = useCallback(async () => {
+    setSyncState('syncing');
+    try {
+      const freshState = await api.apiGetState();
+      setState(freshState);
+      setSyncState('synced');
+    } catch (error) {
+      console.error("Sync failed:", error);
+      setSyncState('error');
+    }
+  }, []);
+
   useEffect(() => {
     const initializeApp = async () => {
       await initDatabase();
-      let finalState = loadStateFromDB();
-      if (!finalState) {
-        finalState = INITIAL_APP_STATE;
-      }
-      const defaultAdmin = INITIAL_APP_STATE.clients.find(c => c.role === 'admin');
-      if (defaultAdmin) {
-        const adminIndex = finalState.clients.findIndex(c => c.email.toLowerCase() === defaultAdmin.email.toLowerCase());
-        if (adminIndex !== -1) {
-          finalState.clients[adminIndex] = { ...finalState.clients[adminIndex], password: defaultAdmin.password, role: 'admin' };
-        } else {
-          finalState.clients.push(defaultAdmin);
+      try {
+        // Tenta buscar do "servidor" primeiro
+        const serverState = await api.apiGetState();
+        setState(serverState);
+      } catch (error) {
+        // Se falhar (offline), usa o banco de dados local como fallback
+        console.warn("Could not fetch from server, falling back to local DB.", error);
+        let finalState = loadStateFromDB();
+        if (!finalState) {
+          finalState = INITIAL_APP_STATE;
         }
+        setState(finalState);
+      } finally {
+        setIsLoading(false);
       }
-      setState(finalState);
-      setIsLoading(false);
     };
     initializeApp();
   }, []);
 
   useEffect(() => {
-    const goOnline = () => setIsOnline(true);
+    const goOnline = () => {
+      setIsOnline(true);
+      forceSync(); // Tenta sincronizar ao ficar online
+    };
     const goOffline = () => setIsOnline(false);
     window.addEventListener('online', goOnline);
     window.addEventListener('offline', goOffline);
@@ -195,7 +212,7 @@ export default function App() {
         window.removeEventListener('online', goOnline);
         window.removeEventListener('offline', goOffline);
     };
-  }, []);
+  }, [forceSync]);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -203,6 +220,7 @@ export default function App() {
         if (data.type === 'STATE_UPDATED') {
             const receivedState = data.payload;
             setState(currentState => {
+                // Apenas atualiza se o estado for diferente para evitar loops
                 if (JSON.stringify(currentState) !== JSON.stringify(receivedState)) {
                     return receivedState;
                 }
@@ -278,6 +296,7 @@ export default function App() {
 
   useEffect(() => {
     if (isLoading) return;
+    // Salva no DB local (cache offline) e notifica outras abas
     saveStateToDB(state);
     const message = { type: 'STATE_UPDATED', payload: state };
     channel.postMessage(JSON.stringify(message));
@@ -299,124 +318,91 @@ export default function App() {
   };
   
   // --- Auth & User Management ---
-  const login = useCallback((email: string, password: string) => {
-    const user = state.clients.find(c => c.email.toLowerCase() === email.toLowerCase() && c.password === password);
+  const login = useCallback(async (email: string, password: string) => {
+    const user = await api.apiLogin(email, password);
     if (user) {
         const { password: _, ...userWithoutPassword } = user;
         setCurrentUser(userWithoutPassword);
         setIsAdminView(user.role === 'admin');
+        await forceSync(); // Sincroniza o estado após o login
     } else {
         throw new Error('Email ou senha inválidos.');
     }
-  }, [state.clients]);
+  }, [forceSync]);
 
   const logout = useCallback(() => {
     setCurrentUser(null);
   }, []);
 
-  const register = useCallback((newUserData: Omit<Client, 'id'>) => {
-    if (state.clients.some(c => c.email.toLowerCase() === newUserData.email.toLowerCase())) {
-        throw new Error('Este e-mail já está em uso.');
-    }
+  const register = useCallback(async (newUserData: Omit<Client, 'id'>) => {
     const newUser: Client = { id: new Date().toISOString(), ...newUserData };
-    setState(prev => ({ ...prev, clients: [...prev.clients, newUser] }));
+    await api.apiRegisterClient(newUser);
     const { password: _, ...userWithoutPassword } = newUser;
     setCurrentUser(userWithoutPassword);
     setIsAdminView(false);
-  }, [state.clients]);
+    await forceSync();
+  }, [forceSync]);
 
-  const resetPassword = useCallback((email: string) => {
-      const userIndex = state.clients.findIndex(c => c.email.toLowerCase() === email.toLowerCase());
-      if (userIndex === -1) throw new Error('E-mail não encontrado.');
-      const newPassword = Math.random().toString(36).slice(-8);
-      setState(prev => {
-          const newClients = [...prev.clients];
-          newClients[userIndex] = { ...newClients[userIndex], password: newPassword };
-          return { ...prev, clients: newClients };
-      });
-      return newPassword;
-  }, [state.clients]);
-
-  // --- Nova Arquitetura: Funções de Modificação de Estado ---
-  const addOrUpdateService = useCallback((service: Service) => {
-    setState(prev => {
-        const exists = prev.services.some(s => s.id === service.id);
-        const services = exists ? prev.services.map(s => s.id === service.id ? service : s) : [...prev.services, service];
-        return { ...prev, services };
-    });
-  }, []);
-
-  const deleteService = useCallback((serviceId: string) => {
-    setState(prev => ({ ...prev, services: prev.services.filter(s => s.id !== serviceId) }));
-  }, []);
-
-  const addOrUpdatePromotion = useCallback((promotion: Promotion) => {
-    setState(prev => {
-        const exists = prev.promotions.some(p => p.id === promotion.id);
-        const promotions = exists ? prev.promotions.map(p => p.id === promotion.id ? promotion : p) : [...prev.promotions, promotion];
-        return { ...prev, promotions };
-    });
-  }, []);
-
-  const deletePromotion = useCallback((promotionId: string) => {
-    setState(prev => ({ ...prev, promotions: prev.promotions.filter(p => p.id !== promotionId) }));
-  }, []);
-  
-  const createAppointment = useCallback((appointmentData: Appointment) => {
-    setState(prev => ({ ...prev, appointments: [...prev.appointments, appointmentData] }));
-  }, []);
-
-  const updateAppointmentStatus = useCallback((appointmentId: string, status: AppointmentStatus, paymentConfirmed?: boolean) => {
-      setState(prev => ({
-          ...prev,
-          appointments: prev.appointments.map(appt => 
-              appt.id === appointmentId 
-                  ? { ...appt, status, ...(paymentConfirmed !== undefined && { paymentConfirmed }) }
-                  : appt
-          ),
-      }));
-  }, []);
-
-  const updateClientNotes = useCallback((clientId: string, notes: string) => {
-    setState(prev => ({ ...prev, clients: prev.clients.map(c => c.id === clientId ? { ...c, notes } : c) }));
-  }, []);
-
-  const resetClientPassword = useCallback((clientId: string) => {
-    const newPassword = Math.random().toString(36).slice(-8);
-    setState(prev => ({
-        ...prev,
-        clients: prev.clients.map(c => c.id === clientId ? { ...c, password: newPassword } : c)
-    }));
+  const resetPassword = useCallback(async (email: string) => {
+    // A validação se o e-mail existe é feita na API mockada
+    const newPassword = await api.apiResetClientPassword(email);
+    await forceSync();
     return newPassword;
-  }, []);
+  }, [forceSync]);
 
-  const updateBrandingSettings = useCallback((branding: BrandingSettings) => {
-    setState(prev => ({ ...prev, settings: { ...prev.settings, branding } }));
-  }, []);
+  // --- Wrapper para ações de modificação de estado ---
+  const handleStateMutation = useCallback(async (action: Promise<any>) => {
+    setSyncState('syncing');
+    try {
+        await action;
+        await forceSync(); // Refetch a fonte da verdade
+    } catch (error) {
+        console.error("Mutation failed:", error);
+        setSyncState('error');
+        alert(error instanceof Error ? error.message : "Ocorreu um erro.");
+        // Opcional: poderia reverter para o estado anterior se tivéssemos otimismo
+    }
+  }, [forceSync]);
+  
+  // --- Funções de Modificação de Estado ---
+  const addOrUpdateService = useCallback((service: Service) => handleStateMutation(api.apiAddOrUpdateService(service)), [handleStateMutation]);
+  const deleteService = useCallback((serviceId: string) => handleStateMutation(api.apiDeleteService(serviceId)), [handleStateMutation]);
+  const addOrUpdatePromotion = useCallback((promotion: Promotion) => handleStateMutation(api.apiAddOrUpdatePromotion(promotion)), [handleStateMutation]);
+  const deletePromotion = useCallback((promotionId: string) => handleStateMutation(api.apiDeletePromotion(promotionId)), [handleStateMutation]);
+  const createAppointment = useCallback((appointmentData: Appointment) => handleStateMutation(api.apiCreateAppointment(appointmentData)), [handleStateMutation]);
+  const updateAppointmentStatus = useCallback((appointmentId: string, status: AppointmentStatus, paymentConfirmed?: boolean) => handleStateMutation(api.apiUpdateAppointmentStatus(appointmentId, status, paymentConfirmed)), [handleStateMutation]);
+  const updateClientNotes = useCallback((clientId: string, notes: string) => handleStateMutation(api.apiUpdateClientNotes(clientId, notes)), [handleStateMutation]);
+  const resetClientPassword = useCallback(async (clientId: string) => {
+      setSyncState('syncing');
+      try {
+          const newPassword = await api.apiResetClientPassword(clientId);
+          await forceSync();
+          return newPassword;
+      } catch (error) {
+          console.error("Password reset failed:", error);
+          setSyncState('error');
+          alert(error instanceof Error ? error.message : "Ocorreu um erro.");
+          throw error;
+      }
+  }, [forceSync, handleStateMutation]);
+  const updateBrandingSettings = useCallback((branding: BrandingSettings) => handleStateMutation(api.apiUpdateBrandingSettings(branding)), [handleStateMutation]);
+  const updatePixSettings = useCallback((pix: AppSettings['pixCredentials']) => handleStateMutation(api.apiUpdatePixSettings(pix)), [handleStateMutation]);
+  const updateMaintenanceMode = useCallback((maintenance: AppSettings['maintenanceMode']) => handleStateMutation(api.apiUpdateMaintenanceMode(maintenance)), [handleStateMutation]);
+  const dangerouslyReplaceState = useCallback((newState: AppState) => handleStateMutation(api.apiDangerouslyReplaceState(newState)), [handleStateMutation]);
 
-  const updatePixSettings = useCallback((pix: AppSettings['pixCredentials']) => {
-    setState(prev => ({ ...prev, settings: { ...prev.settings, pixCredentials: pix } }));
-  }, []);
-
-  const updateMaintenanceMode = useCallback((maintenance: AppSettings['maintenanceMode']) => {
-    setState(prev => ({ ...prev, settings: { ...prev.settings, maintenanceMode: maintenance } }));
-  }, []);
-
-  const dangerouslyReplaceState = useCallback((newState: AppState) => {
-    setState(newState);
-  }, []);
 
   const contextValue = useMemo(() => ({
       state, currentUser, login, logout, register, resetPassword, isAdminView, setIsAdminView,
       addOrUpdateService, deleteService, addOrUpdatePromotion, deletePromotion,
       createAppointment, updateAppointmentStatus, updateClientNotes, resetClientPassword,
       updateBrandingSettings, updatePixSettings, updateMaintenanceMode,
-      dangerouslyReplaceState
+      dangerouslyReplaceState,
+      syncState, forceSync
   }), [state, currentUser, login, logout, register, resetPassword, isAdminView,
       addOrUpdateService, deleteService, addOrUpdatePromotion, deletePromotion,
       createAppointment, updateAppointmentStatus, updateClientNotes, resetClientPassword,
       updateBrandingSettings, updatePixSettings, updateMaintenanceMode,
-      dangerouslyReplaceState]);
+      dangerouslyReplaceState, syncState, forceSync]);
   
   if (isLoading) return <LoadingSpinner />;
 
@@ -428,7 +414,7 @@ export default function App() {
       <Suspense fallback={<LoadingSpinner />}>
         {isMaintenance && !isAdmin ? <MaintenanceMode /> : !currentUser ? <AuthPage /> : (
           <div className="min-h-screen font-sans text-gray-800 dark:text-gray-200">
-            {!isOnline && <SyncStatusIndicator />}
+            {!isOnline && <OfflineIndicator />}
             {isMaintenance && isAdmin && (
                 <div className="bg-yellow-400 text-yellow-900 text-center p-2 z-[100] flex items-center justify-center text-sm shadow-lg sticky top-0 font-semibold">
                     <AlertTriangleIcon className="h-5 w-5 mr-2" />

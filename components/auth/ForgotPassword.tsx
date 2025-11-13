@@ -1,17 +1,19 @@
 
 import React, { useState } from 'react';
 import { useAppContext } from '../../App';
+import * as api from '../../services/api';
 
 interface ForgotPasswordProps {
   onSwitchToLogin: () => void;
 }
 
 const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onSwitchToLogin }) => {
-  const { resetPassword, state } = useAppContext();
+  const { state } = useAppContext();
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [copyButtonText, setCopyButtonText] = useState('Copiar');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleCopyPassword = () => {
     if (!newPassword) return;
@@ -22,15 +24,19 @@ const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onSwitchToLogin }) => {
     }, 2000);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setNewPassword('');
+    setIsLoading(true);
     try {
-      const generatedPassword = resetPassword(email);
+      // Usamos a API diretamente aqui porque o usuário não está logado
+      const generatedPassword = await api.apiResetPasswordForEmail(email);
       setNewPassword(generatedPassword);
     } catch (err: any) {
       setError(err.message);
+    } finally {
+        setIsLoading(false);
     }
   };
   
@@ -85,9 +91,10 @@ const ForgotPassword: React.FC<ForgotPasswordProps> = ({ onSwitchToLogin }) => {
           <div>
             <button
               type="submit"
-              className="w-full px-4 py-2 font-bold text-white rounded-lg btn-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+              disabled={isLoading}
+              className="w-full px-4 py-2 font-bold text-white rounded-lg btn-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:bg-gray-400"
             >
-              Redefinir Senha
+              {isLoading ? 'Redefinindo...' : 'Redefinir Senha'}
             </button>
           </div>
         </form>
