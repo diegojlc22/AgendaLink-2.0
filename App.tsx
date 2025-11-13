@@ -228,16 +228,21 @@ export default function App() {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
         const receivedState = JSON.parse(event.data);
-        if (JSON.stringify(state) !== JSON.stringify(receivedState)) {
-             setState(receivedState);
-        }
+        // Use the functional update form of setState to get the latest state
+        // without needing `state` in the dependency array. This prevents stale closures.
+        setState(currentState => {
+            if (JSON.stringify(currentState) !== JSON.stringify(receivedState)) {
+                return receivedState;
+            }
+            return currentState;
+        });
     };
     channel.addEventListener('message', handleMessage);
 
     return () => {
         channel.removeEventListener('message', handleMessage);
     };
-  }, [state]);
+  }, []);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (event: Event) => {
