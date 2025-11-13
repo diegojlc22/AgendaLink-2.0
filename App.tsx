@@ -252,6 +252,91 @@ export default function App() {
     };
   }, []);
   
+  const applyBranding = useCallback((branding: BrandingSettings) => {
+    document.title = branding.appName;
+    const root = document.documentElement;
+    root.style.setProperty('--color-primary', hexToRgb(branding.colors.primary));
+    root.style.setProperty('--color-secondary', hexToRgb(branding.colors.secondary));
+    root.style.setProperty('--color-accent', hexToRgb(branding.colors.accent));
+    
+    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeColorMeta) {
+      themeColorMeta.setAttribute('content', branding.colors.primary);
+    }
+  }, []);
+
+  // Effect to dynamically update the PWA manifest
+  useEffect(() => {
+    const updateManifestAndIcons = (branding: BrandingSettings) => {
+      // Clean up old tags to prevent duplicates
+      document.querySelector('link[rel="manifest"]')?.remove();
+      document.querySelector('link[rel="apple-touch-icon"]')?.remove();
+      document.querySelector('meta[name="apple-mobile-web-app-title"]')?.remove();
+
+      if (!branding.appName || !branding.logoUrl) return;
+
+      const manifest = {
+        short_name: branding.appName.substring(0, 12),
+        name: branding.appName,
+        description: "An all-in-one web application for beauty professionals, featuring an advanced admin panel and intelligent client scheduling.",
+        lang: "pt-BR",
+        start_url: "/",
+        display: "standalone",
+        orientation: "portrait-primary",
+        theme_color: branding.colors.primary,
+        background_color: "#f3f4f6",
+        icons: [
+          { src: branding.logoUrl, type: "image/png", sizes: "72x72" },
+          { src: branding.logoUrl, type: "image/png", sizes: "96x96" },
+          { src: branding.logoUrl, type: "image/png", sizes: "128x128" },
+          { src: branding.logoUrl, type: "image/png", sizes: "144x144" },
+          { src: branding.logoUrl, type: "image/png", sizes: "152x152" },
+          { src: branding.logoUrl, type: "image/png", sizes: "192x192", purpose: "any maskable" },
+          { src: branding.logoUrl, type: "image/png", sizes: "384x384" },
+          { src: branding.logoUrl, type: "image/png", sizes: "512x512" }
+        ],
+        shortcuts: [
+          {
+            name: "Agendar Horário",
+            short_name: "Agendar",
+            description: "Acessar a tela de agendamento de serviços.",
+            url: "/#services",
+            icons: [{ src: branding.logoUrl, sizes: "96x96" }]
+          },
+          {
+            name: "Minha Conta",
+            short_name: "Conta",
+            description: "Ver seu perfil e histórico de agendamentos.",
+            url: "/#profile",
+            icons: [{ src: branding.logoUrl, sizes: "96x96" }]
+          }
+        ]
+      };
+
+      const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+      const manifestUrl = URL.createObjectURL(manifestBlob);
+
+      const manifestLink = document.createElement('link');
+      manifestLink.rel = 'manifest';
+      manifestLink.href = manifestUrl;
+      document.head.appendChild(manifestLink);
+      
+      const appleIconLink = document.createElement('link');
+      appleIconLink.rel = 'apple-touch-icon';
+      appleIconLink.href = branding.logoUrl;
+      document.head.appendChild(appleIconLink);
+
+      const appleTitleMeta = document.createElement('meta');
+      appleTitleMeta.name = 'apple-mobile-web-app-title';
+      appleTitleMeta.content = branding.appName;
+      document.head.appendChild(appleTitleMeta);
+    };
+
+    updateManifestAndIcons(state.settings.branding);
+    
+  }, [state.settings.branding]);
+
+
   // Efeito para salvar o estado no DB e transmitir
   useEffect(() => {
     if (isLoading) return; // Não salva o estado inicial antes de carregar do DB
@@ -259,7 +344,7 @@ export default function App() {
     const stateString = JSON.stringify(state);
     channel.postMessage(stateString);
     applyBranding(state.settings.branding);
-  }, [state, isLoading]);
+  }, [state, isLoading, applyBranding]);
 
   useEffect(() => {
     if (currentUser) {
@@ -282,14 +367,6 @@ export default function App() {
       }
       setInstallPromptEvent(null);
     });
-  };
-  
-  const applyBranding = (branding: BrandingSettings) => {
-    document.title = branding.appName;
-    const root = document.documentElement;
-    root.style.setProperty('--color-primary', hexToRgb(branding.colors.primary));
-    root.style.setProperty('--color-secondary', hexToRgb(branding.colors.secondary));
-    root.style.setProperty('--color-accent', hexToRgb(branding.colors.accent));
   };
   
   const login = useCallback((email: string, password: string) => {

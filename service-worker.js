@@ -1,4 +1,4 @@
-const CACHE_NAME = 'agendalink-v2'; // Bumped cache version
+const CACHE_NAME = 'agendalink-v3'; // Bumped cache version for invalidation
 const urlsToCache = [
   '/',
   '/index.html',
