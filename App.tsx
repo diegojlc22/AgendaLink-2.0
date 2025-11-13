@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, createContext, useContext, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { AppState, BrandingSettings, Client } from './types';
 import { INITIAL_APP_STATE } from './constants';
@@ -238,11 +239,6 @@ export default function App() {
                 }
                 return currentState;
             });
-        } else if (data.type === 'CONFIG_UPDATED') {
-            // This is a critical update, prompt user to reload to get all new assets and manifest
-            if (window.confirm('As configurações da aplicação foram atualizadas pelo administrador. Deseja recarregar a página para ver as mudanças?')) {
-                window.location.reload();
-            }
         }
     };
     channel.addEventListener('message', handleMessage);

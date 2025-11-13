@@ -1,31 +1,39 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../../App';
 import { AppState, BrandingSettings, PixKeyType, Client } from '../../types';
 import { DownloadIcon, UploadIcon, TrashIcon } from '../common/Icons';
 import { saveStateToDB } from '../../services/database';
 
-const channel = new BroadcastChannel('agenda-link-state-sync');
-
-// Helper function to notify other tabs about a critical config update
-const notifyConfigUpdate = () => {
-    channel.postMessage(JSON.stringify({ type: 'CONFIG_UPDATED' }));
-};
-
 const BrandingSettingsEditor: React.FC = () => {
     const { state, setState } = useAppContext();
-    const { branding } = state.settings;
+    const [draft, setDraft] = useState<BrandingSettings>(state.settings.branding);
+    const [isDirty, setIsDirty] = useState(false);
 
-    const handleBrandingChange = <K extends keyof BrandingSettings>(key: K, value: BrandingSettings[K]) => {
-        setState(prev => ({
-            ...prev,
-            settings: { ...prev.settings, branding: { ...prev.settings.branding, [key]: value } }
-        }));
-        notifyConfigUpdate();
+    useEffect(() => {
+        setDraft(state.settings.branding);
+        setIsDirty(false); // Reseta o estado "sujo" quando o estado global muda
+    }, [state.settings.branding]);
+
+    const handleChange = <K extends keyof BrandingSettings>(key: K, value: BrandingSettings[K]) => {
+        setDraft(prev => ({ ...prev, [key]: value }));
+        setIsDirty(true);
     };
 
     const handleColorChange = (colorName: keyof BrandingSettings['colors'], value: string) => {
-        const newColors = { ...branding.colors, [colorName]: value };
-        handleBrandingChange('colors', newColors);
+        setDraft(prev => ({
+            ...prev,
+            colors: { ...prev.colors, [colorName]: value }
+        }));
+        setIsDirty(true);
+    };
+
+    const handleSave = () => {
+        setState(prev => ({
+            ...prev,
+            settings: { ...prev.settings, branding: draft }
+        }));
+        setIsDirty(false);
+        alert('Configurações de branding salvas com sucesso!');
     };
 
     return (
@@ -33,41 +41,46 @@ const BrandingSettingsEditor: React.FC = () => {
             <h3 className="text-xl font-bold">Branding</h3>
             <div>
                 <label className="font-medium text-sm">Nome do App</label>
-                <input value={branding.appName} onChange={(e) => handleBrandingChange('appName', e.target.value)} className="w-full p-2 mt-1 border rounded-lg bg-white text-gray-900 dark:bg-gray-700 dark:text-white" />
+                <input value={draft.appName} onChange={(e) => handleChange('appName', e.target.value)} className="w-full p-2 mt-1 border rounded-lg bg-white text-gray-900 dark:bg-gray-700 dark:text-white" />
             </div>
-             <div className="flex items-center space-x-3 pt-2">
-                <input 
-                    type="checkbox" 
-                    id="logoEnabled" 
+            <div className="flex items-center space-x-3 pt-2">
+                <input
+                    type="checkbox"
+                    id="logoEnabled"
                     name="logoEnabled"
-                    checked={branding.logoEnabled} 
-                    onChange={(e) => handleBrandingChange('logoEnabled', e.target.checked)}
+                    checked={draft.logoEnabled}
+                    onChange={(e) => handleChange('logoEnabled', e.target.checked)}
                     className="rounded text-primary focus:ring-primary h-4 w-4"
                 />
                 <label htmlFor="logoEnabled" className="font-medium text-sm">Ativar Logo</label>
             </div>
             <div>
                 <label className="font-medium text-sm">URL do Logo</label>
-                <input 
-                    value={branding.logoUrl} 
-                    onChange={(e) => handleBrandingChange('logoUrl', e.target.value)} 
+                <input
+                    value={draft.logoUrl}
+                    onChange={(e) => handleChange('logoUrl', e.target.value)}
                     className="w-full p-2 mt-1 border rounded-lg bg-white text-gray-900 dark:bg-gray-700 dark:text-white disabled:bg-gray-200 dark:disabled:bg-gray-600"
-                    disabled={!branding.logoEnabled}
+                    disabled={!draft.logoEnabled}
                 />
             </div>
             <div className="flex gap-4">
                 <div>
                     <label className="font-medium text-sm">Cor Primária</label>
-                    <input type="color" value={branding.colors.primary} onChange={e => handleColorChange('primary', e.target.value)} className="w-full h-10 p-1 border rounded-lg" />
+                    <input type="color" value={draft.colors.primary} onChange={e => handleColorChange('primary', e.target.value)} className="w-full h-10 p-1 border rounded-lg" />
                 </div>
-                 <div>
+                <div>
                     <label className="font-medium text-sm">Cor Secundária</label>
-                    <input type="color" value={branding.colors.secondary} onChange={e => handleColorChange('secondary', e.target.value)} className="w-full h-10 p-1 border rounded-lg" />
+                    <input type="color" value={draft.colors.secondary} onChange={e => handleColorChange('secondary', e.target.value)} className="w-full h-10 p-1 border rounded-lg" />
                 </div>
-                 <div>
+                <div>
                     <label className="font-medium text-sm">Cor de Destaque</label>
-                    <input type="color" value={branding.colors.accent} onChange={e => handleColorChange('accent', e.target.value)} className="w-full h-10 p-1 border rounded-lg" />
+                    <input type="color" value={draft.colors.accent} onChange={e => handleColorChange('accent', e.target.value)} className="w-full h-10 p-1 border rounded-lg" />
                 </div>
+            </div>
+            <div className="flex justify-end mt-4">
+                <button onClick={handleSave} disabled={!isDirty} className="btn-primary text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed">
+                    Salvar Alterações
+                </button>
             </div>
         </div>
     );
@@ -81,6 +94,11 @@ const PixSettingsEditor: React.FC = () => {
     const [keyValue, setKeyValue] = useState(pixCredentials.pixKey || '');
     const [expirationTime, setExpirationTime] = useState(pixCredentials.pixExpirationTime || 60);
 
+    useEffect(() => {
+        setKeyType(pixCredentials.pixKeyType || '');
+        setKeyValue(pixCredentials.pixKey || '');
+        setExpirationTime(pixCredentials.pixExpirationTime || 60);
+    }, [pixCredentials]);
 
     const handleKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         let value = e.target.value;
@@ -100,22 +118,17 @@ const PixSettingsEditor: React.FC = () => {
     };
 
     const handleSave = () => {
-        setState(prev => {
-            const newState = {
-                ...prev,
-                settings: {
-                    ...prev.settings,
-                    pixCredentials: {
-                        pixKeyType: keyType,
-                        pixKey: keyValue,
-                        pixExpirationTime: expirationTime,
-                    }
+        setState(prev => ({
+            ...prev,
+            settings: {
+                ...prev.settings,
+                pixCredentials: {
+                    pixKeyType: keyType,
+                    pixKey: keyValue,
+                    pixExpirationTime: expirationTime,
                 }
-            };
-            return newState;
-        });
-        // FIX: The setState from `useState` does not accept a callback. The side effects are called after the state update is dispatched.
-        notifyConfigUpdate();
+            }
+        }));
         alert('Configurações PIX salvas com sucesso!');
     };
 
@@ -297,42 +310,62 @@ const MaintenanceModeManager: React.FC = () => {
     const { state, setState } = useAppContext();
     const { maintenanceMode } = state.settings;
 
-    const toggleMaintenance = () => {
-        setState(prev => {
-            const newState = {
-                ...prev,
-                settings: { ...prev.settings, maintenanceMode: { ...prev.settings.maintenanceMode, enabled: !maintenanceMode.enabled } }
-            };
-            return newState;
-        });
-        // FIX: The setState from `useState` does not accept a callback. The side effect is called after the state update is dispatched.
-        notifyConfigUpdate();
+    const [draft, setDraft] = useState(maintenanceMode);
+    const [isDirty, setIsDirty] = useState(false);
+
+    useEffect(() => {
+        setDraft(maintenanceMode);
+        setIsDirty(false);
+    }, [maintenanceMode]);
+
+    const handleToggle = (enabled: boolean) => {
+        setDraft(prev => ({ ...prev, enabled }));
+        setIsDirty(true);
     };
-    
+
     const handleMessageChange = (message: string) => {
+        setDraft(prev => ({ ...prev, message }));
+        setIsDirty(true);
+    };
+
+    const handleSave = () => {
         setState(prev => ({
             ...prev,
-            settings: { ...prev.settings, maintenanceMode: { ...prev.settings.maintenanceMode, message } }
+            settings: { ...prev.settings, maintenanceMode: draft }
         }));
-        // FIX: The setState from `useState` does not accept a callback. The side effect is called after the state update is dispatched.
-        notifyConfigUpdate();
+        setIsDirty(false);
+        alert('Modo Manutenção atualizado com sucesso!');
     };
 
     return (
         <div className="space-y-4">
             <h3 className="text-xl font-bold">Modo Manutenção</h3>
-            <div className="flex items-center space-x-4">
-                <label className="font-semibold">Ativar Modo Manutenção:</label>
-                <button onClick={toggleMaintenance} className={`px-4 py-2 rounded-lg font-bold ${maintenanceMode.enabled ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`}>
-                    {maintenanceMode.enabled ? 'Desativar' : 'Ativar'}
+            <div className="flex items-center space-x-3 pt-2">
+                <input
+                    type="checkbox"
+                    id="maintenanceEnabled"
+                    checked={draft.enabled}
+                    onChange={(e) => handleToggle(e.target.checked)}
+                    className="h-5 w-5 rounded text-primary focus:ring-primary cursor-pointer"
+                />
+                <label htmlFor="maintenanceEnabled" className="font-medium text-sm cursor-pointer">
+                    Ativar Modo Manutenção
+                </label>
+            </div>
+            <div>
+                <label className="font-medium text-sm">Mensagem de Manutenção</label>
+                <input
+                    value={draft.message}
+                    onChange={e => handleMessageChange(e.target.value)}
+                    className="w-full p-2 mt-1 border rounded-lg bg-white text-gray-900 dark:bg-gray-700 dark:text-white disabled:bg-gray-200 dark:disabled:bg-gray-600"
+                    disabled={!draft.enabled}
+                />
+            </div>
+            <div className="flex justify-end mt-4">
+                <button onClick={handleSave} disabled={!isDirty} className="btn-primary text-white font-bold py-2 px-4 rounded-lg disabled:bg-gray-400 disabled:cursor-not-allowed">
+                    Salvar Alterações
                 </button>
             </div>
-            {maintenanceMode.enabled && (
-                <div>
-                    <label className="font-medium text-sm">Mensagem de Manutenção</label>
-                    <input value={maintenanceMode.message} onChange={e => handleMessageChange(e.target.value)} className="w-full p-2 mt-1 border rounded-lg bg-white text-gray-900 dark:bg-gray-700 dark:text-white" />
-                </div>
-            )}
         </div>
     );
 };
