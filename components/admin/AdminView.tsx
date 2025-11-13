@@ -1,4 +1,5 @@
 
+
 import React, { useState, lazy, Suspense } from 'react';
 import { CalendarIcon, CogIcon, DashboardIcon, TagIcon, UsersIcon, PercentageIcon, MenuIcon, XIcon, SyncIcon, CheckCircleIcon, XCircleIcon } from '../common/Icons';
 import { useAppContext } from '../../App';
@@ -29,11 +30,11 @@ const RealtimeSyncIndicator: React.FC<{ syncState: SyncState, onSync: () => void
     const getStatusInfo = () => {
         switch (syncState) {
             case 'syncing':
-                return { text: 'Salvando...', color: 'text-yellow-400', icon: <SyncIcon className="h-4 w-4 animate-spin" /> };
+                return { text: 'Sincronizando...', color: 'text-yellow-400', icon: <SyncIcon className="h-4 w-4 animate-spin" /> };
             case 'synced':
-                return { text: 'Salvo', color: 'text-green-400', icon: <CheckCircleIcon className="h-4 w-4" /> };
+                return { text: 'Sincronizado', color: 'text-green-400', icon: <CheckCircleIcon className="h-4 w-4" /> };
             case 'error':
-                return { text: 'Erro ao Salvar', color: 'text-red-400', icon: <XCircleIcon className="h-4 w-4" /> };
+                return { text: 'Erro na Sincronia', color: 'text-red-400', icon: <XCircleIcon className="h-4 w-4" /> };
             default:
                  return { text: 'Pronto', color: 'text-gray-400', icon: <div className="h-3 w-3 rounded-full bg-green-400"></div> };
         }
@@ -44,7 +45,7 @@ const RealtimeSyncIndicator: React.FC<{ syncState: SyncState, onSync: () => void
     return (
         <button
             onClick={onSync}
-            title={syncState === 'error' ? "Clique para recarregar" : "Status do Banco de Dados Local"}
+            title={syncState === 'error' ? "Clique para tentar sincronizar novamente" : "Status da Sincronização"}
             className="flex items-center space-x-2 text-xs font-medium"
         >
             {icon}

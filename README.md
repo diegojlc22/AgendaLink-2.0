@@ -1,6 +1,6 @@
 # AgendaLink 2.0 🚀
 
-**Sua solução completa e moderna para gestão de beleza e agendamentos, agora como um Progressive Web App (PWA) de alta performance e 100% offline!**
+**Sua solução completa e moderna para gestão de beleza e agendamentos, agora com uma arquitetura híbrida de alta performance: offline-first com sincronização na nuvem!**
 
 ![Banner de Tecnologia](https://camo.githubusercontent.com/820e646a6e2fa4116569b43986df8b44e2d504a28b86f5df41e8a1fc577b812a/68747470733a2f2f7777772e696e666f6d6f6e65792e636f6d2e62722f77702d636f6e74656e742f75706c6f6164732f323031392f30362f7465636e6f6c6f6769612d322e6a70673f773d393030267175616c6974793d37302673747269703d616c6c)
 
@@ -10,7 +10,9 @@
 
 O AgendaLink 2.0 é uma aplicação web completa, projetada para profissionais da beleza que buscam otimizar a gestão de seus negócios. A plataforma oferece um painel administrativo robusto e uma interface de agendamento inteligente e intuitiva para clientes.
 
-Totalmente reconstruído como um **Progressive Web App offline-first**, o AgendaLink 2.0 combina a acessibilidade da web com a experiência de um aplicativo nativo. Ele funciona perfeitamente em celulares, tablets e desktops, com todos os dados salvos em um **banco de dados SQLite local no navegador**, garantindo uma experiência de uso contínua, mesmo sem conexão com a internet.
+Com uma **arquitetura híbrida e offline-first**, o AgendaLink 2.0 combina o melhor dos dois mundos:
+1.  **Performance Offline:** Todos os dados são salvos primeiro em um **banco de dados SQLite local no navegador**, garantindo que o app seja extremamente rápido e totalmente funcional mesmo sem conexão com a internet.
+2.  **Sincronização na Nuvem:** As alterações são enviadas para um **servidor central (atualmente simulado)**, permitindo que seus dados estejam sempre sincronizados entre diferentes navegadores e dispositivos.
 
 ---
 
@@ -41,8 +43,8 @@ O AgendaLink 2.0 é repleto de funcionalidades para atender tanto o administrado
 Leve seu negócio para o próximo nível com funcionalidades de aplicativos nativos:
 
 - **Instalável:** Adicione o AgendaLink à tela inicial do seu celular ou desktop com um único clique.
-- **Funciona 100% Offline com Banco de Dados Real:** O aplicativo carrega instantaneamente e funciona offline de forma robusta, salvando todos os dados em um banco de dados **SQLite** no navegador. Um **indicador visual** informa ao usuário quando a conexão é perdida.
-- **Sincronização entre Abas:** Graças ao `BroadcastChannel`, as alterações feitas em uma aba são refletidas instantaneamente em outras abas abertas no mesmo navegador.
+- **Funciona Offline com Sincronização:** O aplicativo carrega instantaneamente e funciona offline, salvando dados no banco de dados **SQLite** local. Quando online, ele sincroniza automaticamente com o servidor. Um **indicador visual** mostra o status da conexão e da sincronização.
+- **Sincronização entre Abas e Navegadores:** Graças à comunicação com o servidor central, as alterações feitas em um dispositivo são refletidas em outros.
 - **Notificações Push:** Envie lembretes de agendamento e promoções diretamente para os dispositivos dos seus clientes (requer um serviço de push).
 - **Atalhos Rápidos:** Acesse seções como "Agendar" e "Minha Conta" diretamente do ícone do app.
 - **Experiência Imersiva:** Uma vez instalado, o app roda em tela cheia, sem a barra de endereço do navegador.
@@ -54,7 +56,9 @@ Leve seu negócio para o próximo nível com funcionalidades de aplicativos nati
 
 - **React:** Para uma interface de usuário reativa e moderna.
 - **TypeScript:** Para um código mais seguro e manutenível.
-- **SQLite (via sql.js):** Para um banco de dados robusto no navegador que garante o funcionamento offline.
+- **Arquitetura Híbrida:**
+    - **SQLite (via sql.js):** Para um banco de dados local robusto no navegador que garante o funcionamento offline e performance.
+    - **Servidor Simulado (Mock):** Um servidor simulado usando `localStorage` para demonstrar a sincronização de dados entre sessões. **Para produção, este mock deve ser substituído por um backend real (ex: Node.js, Python) com um banco de dados (ex: PostgreSQL, MongoDB).**
 - **IndexedDB:** Para persistir o arquivo do banco de dados SQLite entre as sessões.
 - **Tailwind CSS:** Para estilização rápida e responsiva.
 - **Recharts:** Para a criação de gráficos interativos no dashboard.
@@ -96,7 +100,7 @@ Como o AgendaLink 2.0 é uma aplicação totalmente client-side, não há necess
 
 ## 🚀 Como Usar
 
-A aplicação usa um banco de dados SQLite local no seu navegador para garantir que tudo funcione offline.
+A aplicação usa um banco de dados SQLite local no seu navegador para garantir que tudo funcione offline e sincroniza com um servidor simulado para manter os dados consistentes.
 
 ### Visão do Cliente
 - **Login:** Use as credenciais `cliente@agendalink.com` / `123`.

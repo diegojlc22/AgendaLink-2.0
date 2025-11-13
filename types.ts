@@ -132,4 +132,7 @@ export interface AppContextType {
 
   syncState: SyncState;
   forceSync: () => Promise<void>;
+
+  isTestMode: boolean;
+  toggleTestMode: () => Promise<void>;
 }

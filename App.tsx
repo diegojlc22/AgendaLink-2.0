@@ -5,7 +5,8 @@ import { INITIAL_APP_STATE } from './constants';
 import * as api from './services/api';
 import PWAInstallPrompt from './components/common/PWAInstallPrompt';
 import { AlertTriangleIcon, WifiOffIcon, ShieldCheckIcon } from './components/common/Icons';
-import { initDatabase, loadStateFromDB, saveStateToDB } from './services/database';
+import { initDatabase, saveStateToDB } from './services/database';
+import { initializeMockServer, setTestMode } from './services/mockServer';
 
 const ClientView = lazy(() => import('./components/client/ClientView'));
 const AdminView = lazy(() => import('./components/admin/AdminView'));
@@ -128,7 +129,14 @@ const MaintenanceMode: React.FC = () => {
 const OfflineIndicator: React.FC = () => (
     <div className="fixed top-0 left-0 right-0 bg-yellow-500 text-white text-center p-2 z-[100] flex items-center justify-center text-sm shadow-lg">
         <WifiOffIcon className="h-5 w-5 mr-2" />
-        Você está offline. O aplicativo continuará funcionando normalmente.
+        Você está offline. Alterações serão sincronizadas quando reconectar.
+    </div>
+);
+
+const TestModeIndicator: React.FC = () => (
+    <div className="bg-blue-600 text-white text-center p-2 z-[100] flex items-center justify-center text-sm shadow-lg sticky top-0 font-semibold">
+        <AlertTriangleIcon className="h-5 w-5 mr-2" />
+        AMBIENTE DE TESTE ATIVO - As alterações não afetarão os dados reais.
     </div>
 );
 
@@ -150,19 +158,42 @@ export default function App() {
   const [isAdminView, setIsAdminView] = useState(false);
   const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isTestMode, setIsTestMode] = useState(false);
 
-  const forceSync = useCallback(() => {
+
+  const forceSync = useCallback(async () => {
+    if (!isOnline) {
+        alert("Você está offline. Não é possível sincronizar.");
+        return;
+    }
     setSyncState('syncing');
     try {
-        const freshState = api.apiGetState();
+        const freshState = await api.apiSyncWithServer();
         setState(freshState);
         setSyncState('synced');
     } catch (error) {
-        console.error("Failed to load state from DB:", error);
+        console.error("Failed to sync state from server:", error);
         setSyncState('error');
     }
-  }, []);
+  }, [isOnline]);
 
+  const toggleTestMode = useCallback(async () => {
+    const turningOn = !isTestMode;
+    const action = turningOn ? 'ativar' : 'desativar';
+    const confirmationMessage = turningOn
+        ? 'Deseja ativar o ambiente de teste? Uma cópia segura dos seus dados será criada para você experimentar. Nenhuma alteração aqui afetará seus dados reais.'
+        : 'Deseja sair do ambiente de teste? Você voltará a usar os dados reais da aplicação.';
+
+    if (window.confirm(confirmationMessage)) {
+        setTestMode(turningOn); // Ativa o mock server para usar o DB de teste
+        setIsTestMode(turningOn); // Atualiza o estado do React
+        
+        // Força uma ressincronização para carregar os dados do ambiente correto (teste ou produção)
+        await forceSync(); 
+        
+        alert(`Ambiente de teste ${turningOn ? 'ativado' : 'desativado'} com sucesso. Os dados foram ${turningOn ? 'carregados do ambiente de teste' : 'restaurados do ambiente de produção'}.`);
+    }
+  }, [isTestMode, forceSync]);
 
   // Efeito para verificar o "token" (ID do usuário) de autenticação na inicialização
   useEffect(() => {
@@ -170,12 +201,13 @@ export default function App() {
         const userId = localStorage.getItem('agendaLinkAuthToken');
         if (userId) {
             try {
-                // apiGetCurrentUser agora lê do banco de dados local
+                // apiGetCurrentUser lê do banco de dados local para ser rápido
                 const user = await api.apiGetCurrentUser();
                 setCurrentUser(user);
                 setIsAdminView(user.role === 'admin');
             } catch (error) {
                 console.error("User verification failed:", error);
+                // Se o usuário não for encontrado localmente, pode ser um problema de sincronia. Força o logout.
                 localStorage.removeItem('agendaLinkAuthToken');
                 setCurrentUser(null);
             }
@@ -185,26 +217,37 @@ export default function App() {
     verifyUser();
   }, []);
 
-  // Efeito para inicializar o banco de dados e carregar o estado inicial
+  // Efeito para inicializar o banco de dados e carregar o estado
   useEffect(() => {
     const initializeApp = async () => {
+      setIsLoading(true);
+      // Inicializa o servidor simulado e o DB local
+      initializeMockServer();
       await initDatabase();
-      const localState = api.apiGetState(); // Isso vai carregar do DB ou retornar o estado inicial
       
-      // Se o DB estava vazio, isso garante que o estado inicial seja salvo
-      if (!loadStateFromDB()) {
-          saveStateToDB(localState);
+      // Carrega o estado do DB local primeiro para uma inicialização rápida
+      let localState = api.apiGetLocalState(); // Pode retornar null se o DB estiver vazio
+      if (!localState) { 
+          console.log("No local state found, initializing with default state.");
+          localState = INITIAL_APP_STATE;
+          saveStateToDB(localState); // Salva o estado inicial para a próxima vez
       }
-      
       setState(localState);
       setIsLoading(false);
+      
+      // Após o app estar visível com os dados locais, inicia a sincronização com o servidor
+      await forceSync();
     };
     initializeApp();
-  }, [currentUser]); // Recarrega o estado quando o usuário muda (login/logout)
+  }, [forceSync]);
 
 
   useEffect(() => {
-    const goOnline = () => setIsOnline(true);
+    const goOnline = () => {
+        setIsOnline(true);
+        // Tenta sincronizar automaticamente ao ficar online
+        forceSync();
+    };
     const goOffline = () => setIsOnline(false);
     window.addEventListener('online', goOnline);
     window.addEventListener('offline', goOffline);
@@ -212,26 +255,22 @@ export default function App() {
         window.removeEventListener('online', goOnline);
         window.removeEventListener('offline', goOffline);
     };
-  }, []);
+  }, [forceSync]);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
         const data = JSON.parse(event.data);
-        if (data.type === 'STATE_UPDATED') {
-            const receivedState = data.payload;
-            setState(currentState => {
-                if (JSON.stringify(currentState) !== JSON.stringify(receivedState)) {
-                    return receivedState;
-                }
-                return currentState;
-            });
+        if (data.type === 'STATE_UPDATED_BY_ANOTHER_TAB') {
+            // Outra aba modificou o estado. Para garantir consistência, vamos
+            // forçar uma sincronização com o "servidor" (localStorage).
+            forceSync();
         }
     };
     channel.addEventListener('message', handleMessage);
     return () => {
         channel.removeEventListener('message', handleMessage);
     };
-  }, []);
+  }, [forceSync]);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (event: Event) => {
@@ -295,10 +334,6 @@ export default function App() {
 
   useEffect(() => {
     if (isLoading) return;
-    // O state é salvo no DB através das funções de API agora, mas
-    // podemos manter isso para garantir a sincronização entre abas
-    const message = { type: 'STATE_UPDATED', payload: state };
-    channel.postMessage(JSON.stringify(message));
     applyBranding(state.settings.branding);
   }, [state, isLoading, applyBranding]);
 
@@ -309,8 +344,8 @@ export default function App() {
   };
   
   const login = useCallback(async (email: string, password: string) => {
-    const { token, user } = await api.apiLogin(email, password);
-    localStorage.setItem('agendaLinkAuthToken', token);
+    const { user } = await api.apiLogin(email, password);
+    localStorage.setItem('agendaLinkAuthToken', user.id);
     setCurrentUser(user);
     setIsAdminView(user.role === 'admin');
   }, []);
@@ -322,32 +357,32 @@ export default function App() {
   }, []);
 
   const register = useCallback(async (newUserData: Omit<Client, 'id'>) => {
-    const { token, user } = await api.apiRegisterClient(newUserData);
-    localStorage.setItem('agendaLinkAuthToken', token);
+    const { user } = await api.apiRegisterClient(newUserData);
+    localStorage.setItem('agendaLinkAuthToken', user.id);
     setCurrentUser(user);
     setIsAdminView(false);
   }, []);
 
   const resetPassword = useCallback(async (email: string) => {
     const newPassword = await api.apiResetPasswordForEmail(email);
-    forceSync();
     return newPassword;
-  }, [forceSync]);
+  }, []);
 
  const createUpdater = <T extends any[]>(apiCall: (...args: T) => Promise<any>) => {
     return async (...args: T) => {
         setSyncState('syncing');
         try {
             await apiCall(...args);
-            const freshState = api.apiGetState();
+            const freshState = api.apiGetLocalState();
             setState(freshState);
+            channel.postMessage(JSON.stringify({ type: 'STATE_UPDATED_BY_ANOTHER_TAB' }));
             setSyncState('synced');
         } catch (error) {
-            console.error(`Local DB operation failed:`, error);
+            console.error(`Operation failed:`, error);
             setSyncState('error');
-            alert(`Ocorreu um erro ao salvar os dados: ${error instanceof Error ? error.message : String(error)}`);
-            const freshState = api.apiGetState();
-            setState(freshState);
+            alert(`Ocorreu um erro: ${error instanceof Error ? error.message : String(error)}. Tentando restaurar para o último estado válido.`);
+            // Em caso de erro, ressincroniza com o servidor para garantir consistência
+            await forceSync();
         }
     };
   };
@@ -367,7 +402,10 @@ export default function App() {
       setSyncState('syncing');
       try {
           const newPassword = await api.apiResetClientPassword(clientId);
-          forceSync();
+          const freshState = api.apiGetLocalState();
+          setState(freshState);
+          channel.postMessage(JSON.stringify({ type: 'STATE_UPDATED_BY_ANOTHER_TAB' }));
+          setSyncState('synced');
           return newPassword;
       } catch (error) {
           console.error("Password reset failed:", error);
@@ -375,13 +413,14 @@ export default function App() {
           alert(error instanceof Error ? error.message : "Ocorreu um erro.");
           throw error;
       }
-  }, [forceSync]);
+  }, []);
 
   const dangerouslyReplaceState = useCallback(async (newState: AppState) => {
     setSyncState('syncing');
     try {
         await api.apiDangerouslyReplaceState(newState);
-        forceSync();
+        // Após a substituição, a sincronização é a melhor maneira de obter o estado correto
+        await forceSync(); 
     } catch (error) {
         console.error("Data replacement failed:", error);
         setSyncState('error');
@@ -395,8 +434,9 @@ export default function App() {
       createAppointment, updateAppointmentStatus, updateClientNotes, resetClientPassword,
       updateBrandingSettings, updatePixSettings, updateMaintenanceMode,
       dangerouslyReplaceState,
-      syncState, forceSync
-  }), [state, currentUser, login, logout, register, resetPassword, isAdminView, forceSync]);
+      syncState, forceSync,
+      isTestMode, toggleTestMode
+  }), [state, currentUser, login, logout, register, resetPassword, isAdminView, forceSync, syncState, isTestMode, toggleTestMode]);
   
   if (isLoading || isAuthLoading) return <LoadingSpinner />;
 
@@ -409,8 +449,9 @@ export default function App() {
         {isMaintenance && !isAdmin ? <MaintenanceMode /> : !currentUser ? <AuthPage /> : (
           <div className="min-h-screen font-sans text-gray-800 dark:text-gray-200">
             {!isOnline && <OfflineIndicator />}
+            {isTestMode && isAdmin && <TestModeIndicator />}
             {isMaintenance && isAdmin && (
-                <div className="bg-yellow-400 text-yellow-900 text-center p-2 z-[100] flex items-center justify-center text-sm shadow-lg sticky top-0 font-semibold">
+                <div className="bg-yellow-400 text-yellow-900 text-center p-2 z-[99] flex items-center justify-center text-sm shadow-lg sticky top-0 font-semibold">
                     <AlertTriangleIcon className="h-5 w-5 mr-2" />
                     MODO MANUTENÇÃO ATIVO
                 </div>
