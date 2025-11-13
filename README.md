@@ -1,6 +1,6 @@
 # AgendaLink 2.0 🚀
 
-**Sua solução completa e moderna para gestão de beleza e agendamentos, agora como um Progressive Web App (PWA) de alta performance!**
+**Sua solução completa e moderna para gestão de beleza e agendamentos, agora como um Progressive Web App (PWA) de alta performance e 100% offline!**
 
 ![Banner de Tecnologia](https://camo.githubusercontent.com/820e646a6e2fa4116569b43986df8b44e2d504a28b86f5df41e8a1fc577b812a/68747470733a2f2f7777772e696e666f6d6f6e65792e636f6d2e62722f77702d636f6e74656e742f75706c6f6164732f323031392f30362f7465636e6f6c6f6769612d322e6a70673f773d393030267175616c6974793d37302673747269703d616c6c)
 
@@ -10,7 +10,7 @@
 
 O AgendaLink 2.0 é uma aplicação web completa, projetada para profissionais da beleza que buscam otimizar a gestão de seus negócios. A plataforma oferece um painel administrativo robusto e uma interface de agendamento inteligente e intuitiva para clientes.
 
-Totalmente transformado em um **Progressive Web App**, o AgendaLink 2.0 combina a acessibilidade da web com a experiência de um aplicativo nativo, funcionando perfeitamente em celulares, tablets e desktops, com dados salvos em um **banco de dados SQLite local** para uma experiência offline superior.
+Totalmente reconstruído como um **Progressive Web App offline-first**, o AgendaLink 2.0 combina a acessibilidade da web com a experiência de um aplicativo nativo. Ele funciona perfeitamente em celulares, tablets e desktops, com todos os dados salvos em um **banco de dados SQLite local no navegador**, garantindo uma experiência de uso contínua, mesmo sem conexão com a internet.
 
 ---
 
@@ -32,7 +32,7 @@ O AgendaLink 2.0 é repleto de funcionalidades para atender tanto o administrado
 - **Criação de Promoções:** Crie campanhas de desconto (percentual ou fixo) com limites de uso e validade.
 - **Personalização (Branding):** Altere o nome, o logo e as cores do aplicativo para combinar com sua marca.
 - **Modo Manutenção Avançado:** Ative um modo que bloqueia o acesso para clientes, enquanto administradores podem continuar a usar o sistema. Inclui uma página de manutenção personalizável com um **login secreto para administradores** (clique 5 vezes no logo/ícone). Um banner de alerta é exibido para o admin para evitar que o modo seja esquecido ativo.
-- **Gerenciamento de Dados Completo:** Faça backup de todos os dados da aplicação com a função de **Exportar**. Restaure um backup a qualquer momento com a função de **Importar**. Realize uma **limpeza completa (hard reset)** para apagar todos os dados do navegador, caches e service worker.
+- **Gerenciamento de Dados Completo:** Faça backup de todos os dados da aplicação com a função de **Exportar**. Restaure um backup a qualquer momento com a função de **Importar**.
 
 ---
 
@@ -41,9 +41,9 @@ O AgendaLink 2.0 é repleto de funcionalidades para atender tanto o administrado
 Leve seu negócio para o próximo nível com funcionalidades de aplicativos nativos:
 
 - **Instalável:** Adicione o AgendaLink à tela inicial do seu celular ou desktop com um único clique.
-- **Funciona Offline com Banco de Dados Real:** O aplicativo carrega instantaneamente e funciona offline de forma robusta, salvando todos os dados em um banco de dados **SQLite** no navegador. Um **indicador visual** informa ao usuário quando a conexão é perdida.
-- **Sincronização em Tempo Real entre Dispositivos:** As alterações são refletidas instantaneamente em todos os dispositivos conectados graças a um backend com WebSockets.
-- **Notificações Push:** Envie lembretes de agendamento e promoções diretamente para os dispositivos dos seus clientes (requer backend).
+- **Funciona 100% Offline com Banco de Dados Real:** O aplicativo carrega instantaneamente e funciona offline de forma robusta, salvando todos os dados em um banco de dados **SQLite** no navegador. Um **indicador visual** informa ao usuário quando a conexão é perdida.
+- **Sincronização entre Abas:** Graças ao `BroadcastChannel`, as alterações feitas em uma aba são refletidas instantaneamente em outras abas abertas no mesmo navegador.
+- **Notificações Push:** Envie lembretes de agendamento e promoções diretamente para os dispositivos dos seus clientes (requer um serviço de push).
 - **Atalhos Rápidos:** Acesse seções como "Agendar" e "Minha Conta" diretamente do ícone do app.
 - **Experiência Imersiva:** Uma vez instalado, o app roda em tela cheia, sem a barra de endereço do navegador.
 - **Compartilhamento Nativo:** Clientes podem compartilhar promoções facilmente usando a função de compartilhamento do dispositivo.
@@ -52,29 +52,21 @@ Leve seu negócio para o próximo nível com funcionalidades de aplicativos nati
 
 ## 🛠️ Tecnologias Utilizadas
 
-### Frontend
 - **React:** Para uma interface de usuário reativa e moderna.
 - **TypeScript:** Para um código mais seguro e manutenível.
 - **SQLite (via sql.js):** Para um banco de dados robusto no navegador que garante o funcionamento offline.
+- **IndexedDB:** Para persistir o arquivo do banco de dados SQLite entre as sessões.
 - **Tailwind CSS:** Para estilização rápida e responsiva.
 - **Recharts:** Para a criação de gráficos interativos no dashboard.
 - **Service Workers:** Para habilitar o cache, o funcionamento offline e as notificações.
 - **Web App Manifest:** Para garantir a experiência de instalação e a aparência nativa.
-
-### Backend (Arquitetura Recomendada)
-- **Node.js com Express.js:** Para um servidor leve, rápido e baseado em JavaScript.
-- **PostgreSQL:** Como banco de dados relacional, robusto e escalável.
-- **Prisma:** ORM moderno para interagir com o banco de dados de forma segura.
-- **Socket.IO:** Para comunicação em tempo real via WebSockets.
-- **JWT (JSON Web Tokens) & bcrypt:** Para autenticação e segurança de senhas.
+- **Vite:** Como ferramenta de build e servidor de desenvolvimento de alta performance.
 
 ---
 
 ## 🚀 Como Rodar o Projeto
 
-Para rodar a aplicação completa, você precisa rodar o **Frontend** e o **Backend** separadamente.
-
-### Rodando o Frontend (Este Projeto)
+Como o AgendaLink 2.0 é uma aplicação totalmente client-side, não há necessidade de configurar um backend.
 
 1.  **Crie uma Pasta para o Projeto:**
     Crie uma nova pasta no seu computador e salve todos os arquivos do projeto dentro dela.
@@ -98,42 +90,21 @@ Para rodar a aplicação completa, você precisa rodar o **Frontend** e o **Back
 
     `http://localhost:5173`
 
-    Pronto! O frontend estará rodando na sua máquina.
-
-### Rodando o Backend
-
-Você precisará construir um servidor backend que siga a especificação de API descrita no arquivo `services/api.ts`.
-
-1.  **Crie seu projeto de backend:**
-    Siga as tecnologias recomendadas (Node.js, Express, Prisma) ou sua stack de preferência.
-
-2.  **Implemente os Endpoints:**
-    Crie as rotas e a lógica para cada função definida em `services/api.ts`.
-
-3.  **Configure o Banco de Dados:**
-    - Crie um banco de dados PostgreSQL.
-    - Configure a string de conexão no seu backend (ex: em um arquivo `.env`).
-
-4.  **Inicie o Servidor Backend:**
-    ```bash
-    # Exemplo de comando
-    npm run dev
-    ```
-    O servidor deverá estar rodando na URL configurada no frontend (por padrão, `http://localhost:3001`).
+    Pronto! A aplicação estará rodando 100% na sua máquina.
 
 ---
 
 ## 🚀 Como Usar
 
-A aplicação se conecta a um backend real para persistência e sincronização de dados, mas continua usando um banco de dados SQLite local no seu navegador para garantir que tudo funcione offline.
+A aplicação usa um banco de dados SQLite local no seu navegador para garantir que tudo funcione offline.
 
 ### Visão do Cliente
-- **Login:** Use as credenciais `cliente@agendalink.com` / `123` (após cadastrá-las no seu backend).
+- **Login:** Use as credenciais `cliente@agendalink.com` / `123`.
 - **Navegação:** Use a barra de navegação inferior para explorar serviços, ver promoções e acessar seu perfil.
 - **Agendamento:** Escolha um serviço, selecione data/hora e confirme.
 - **Instalação:** Clique no botão **"Instalar App"** que aparece no canto da tela para adicionar o AgendaLink à sua tela inicial.
 
 ### Painel do Administrador
-- **Login:** Use as credenciais `admin@admin` / `admin` (após cadastrá-las no seu backend com a role 'admin').
+- **Login:** Use as credenciais `admin@admin` / `admin`.
 - **Acesso:** Após o login, você verá o painel administrativo.
 - **Alternar Visão:** Um botão flutuante permite que você alterne entre a visão de administrador e a de cliente para testar a experiência completa.

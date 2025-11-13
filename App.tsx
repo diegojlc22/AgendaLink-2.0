@@ -4,7 +4,7 @@ import { AppState, BrandingSettings, Client, Service, Promotion, Appointment, Ap
 import { INITIAL_APP_STATE } from './constants';
 import * as api from './services/api';
 import PWAInstallPrompt from './components/common/PWAInstallPrompt';
-import { AlertTriangleIcon, WifiOffIcon, ShieldCheckIcon, UsersIcon } from './components/common/Icons';
+import { AlertTriangleIcon, WifiOffIcon, ShieldCheckIcon } from './components/common/Icons';
 import { initDatabase, loadStateFromDB, saveStateToDB } from './services/database';
 
 const ClientView = lazy(() => import('./components/client/ClientView'));
@@ -66,8 +66,6 @@ const MaintenanceMode: React.FC = () => {
         e.preventDefault();
         setError('');
         try {
-            // A verificação de admin agora deve ocorrer no backend, mas mantemos uma verificação
-            // client-side para o caso especial do modo manutenção.
             await login(email, password);
         } catch (err: any) {
             setError(err.message);
@@ -130,7 +128,7 @@ const MaintenanceMode: React.FC = () => {
 const OfflineIndicator: React.FC = () => (
     <div className="fixed top-0 left-0 right-0 bg-yellow-500 text-white text-center p-2 z-[100] flex items-center justify-center text-sm shadow-lg">
         <WifiOffIcon className="h-5 w-5 mr-2" />
-        Você está offline. As alterações podem não ser sincronizadas com outros dispositivos.
+        Você está offline. O aplicativo continuará funcionando normalmente.
     </div>
 );
 
@@ -153,90 +151,60 @@ export default function App() {
   const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
-  const forceSync = useCallback(async () => {
-    if (!navigator.onLine) {
-        setSyncState('idle'); // Fica ocioso se estiver offline
-        return;
-    }
+  const forceSync = useCallback(() => {
     setSyncState('syncing');
     try {
-      const freshState = await api.apiGetState();
-      setState(freshState);
-      setSyncState('synced');
+        const freshState = api.apiGetState();
+        setState(freshState);
+        setSyncState('synced');
     } catch (error) {
-      console.error("Sync failed:", error);
-      setSyncState('error');
+        console.error("Failed to load state from DB:", error);
+        setSyncState('error');
     }
   }, []);
 
-  // Efeito para verificar o token de autenticação na inicialização
+
+  // Efeito para verificar o "token" (ID do usuário) de autenticação na inicialização
   useEffect(() => {
-    const verifyToken = async () => {
-        const token = localStorage.getItem('agendaLinkAuthToken');
-        if (token) {
+    const verifyUser = async () => {
+        const userId = localStorage.getItem('agendaLinkAuthToken');
+        if (userId) {
             try {
+                // apiGetCurrentUser agora lê do banco de dados local
                 const user = await api.apiGetCurrentUser();
-                const { password: _, ...userWithoutPassword } = user;
-                setCurrentUser(userWithoutPassword);
+                setCurrentUser(user);
                 setIsAdminView(user.role === 'admin');
             } catch (error) {
-                console.error("Token verification failed:", error);
+                console.error("User verification failed:", error);
                 localStorage.removeItem('agendaLinkAuthToken');
                 setCurrentUser(null);
             }
         }
         setIsAuthLoading(false);
     };
-    verifyToken();
+    verifyUser();
   }, []);
 
   // Efeito para inicializar o banco de dados e carregar o estado inicial
   useEffect(() => {
     const initializeApp = async () => {
       await initDatabase();
-      try {
-        const serverState = await api.apiGetState();
-        setState(serverState);
-      } catch (error) {
-        console.warn("Could not fetch from server, falling back to local DB.", error);
-        let finalState = loadStateFromDB();
-        if (!finalState) {
-          finalState = INITIAL_APP_STATE;
-        }
-        setState(finalState);
-      } finally {
-        setIsLoading(false);
+      const localState = api.apiGetState(); // Isso vai carregar do DB ou retornar o estado inicial
+      
+      // Se o DB estava vazio, isso garante que o estado inicial seja salvo
+      if (!loadStateFromDB()) {
+          saveStateToDB(localState);
       }
+      
+      setState(localState);
+      setIsLoading(false);
     };
     initializeApp();
   }, [currentUser]); // Recarrega o estado quando o usuário muda (login/logout)
 
-  // Efeito para WebSockets
-  useEffect(() => {
-    const token = localStorage.getItem('agendaLinkAuthToken');
-    if (!token || !currentUser) return;
-
-    const ws = new WebSocket(`ws://localhost:3001?token=${token}`);
-
-    ws.onopen = () => console.log('WebSocket connected');
-    ws.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-        if (message.type === 'STATE_CHANGED') {
-            console.log('Server state changed, forcing sync.');
-            forceSync();
-        }
-    };
-    ws.onclose = () => console.log('WebSocket disconnected');
-    ws.onerror = (error) => console.error('WebSocket error:', error);
-
-    return () => ws.close();
-  }, [currentUser, forceSync]);
 
   useEffect(() => {
-    const goOnline = () => {
-      setIsOnline(true);
-      forceSync();
-    };
+    const goOnline = () => setIsOnline(true);
     const goOffline = () => setIsOnline(false);
     window.addEventListener('online', goOnline);
     window.addEventListener('offline', goOffline);
@@ -244,7 +212,7 @@ export default function App() {
         window.removeEventListener('online', goOnline);
         window.removeEventListener('offline', goOffline);
     };
-  }, [forceSync]);
+  }, []);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -327,7 +295,8 @@ export default function App() {
 
   useEffect(() => {
     if (isLoading) return;
-    saveStateToDB(state);
+    // O state é salvo no DB através das funções de API agora, mas
+    // podemos manter isso para garantir a sincronização entre abas
     const message = { type: 'STATE_UPDATED', payload: state };
     channel.postMessage(JSON.stringify(message));
     applyBranding(state.settings.branding);
@@ -342,13 +311,8 @@ export default function App() {
   const login = useCallback(async (email: string, password: string) => {
     const { token, user } = await api.apiLogin(email, password);
     localStorage.setItem('agendaLinkAuthToken', token);
-    if (user) {
-        const { password: _, ...userWithoutPassword } = user;
-        setCurrentUser(userWithoutPassword);
-        setIsAdminView(user.role === 'admin');
-    } else {
-        throw new Error('Usuário não retornado pela API.');
-    }
+    setCurrentUser(user);
+    setIsAdminView(user.role === 'admin');
   }, []);
 
   const logout = useCallback(() => {
@@ -358,118 +322,52 @@ export default function App() {
   }, []);
 
   const register = useCallback(async (newUserData: Omit<Client, 'id'>) => {
-    // FIX: The argument to apiRegisterClient should be newUserData, not the destructured newUser.
-    const { token, user: newUser } = await api.apiRegisterClient(newUserData);
+    const { token, user } = await api.apiRegisterClient(newUserData);
     localStorage.setItem('agendaLinkAuthToken', token);
-    const { password: _, ...userWithoutPassword } = newUser;
-    setCurrentUser(userWithoutPassword);
+    setCurrentUser(user);
     setIsAdminView(false);
   }, []);
 
   const resetPassword = useCallback(async (email: string) => {
-    // FIX: apiResetPasswordForEmail returns a string directly, not an object to be destructured.
     const newPassword = await api.apiResetPasswordForEmail(email);
-    await forceSync();
+    forceSync();
     return newPassword;
   }, [forceSync]);
 
-  const createOptimisticUpdater = <T,>(
-    apiCall: (...args: T[]) => Promise<any>,
-    stateModifier: (prevState: AppState, ...args: T[]) => AppState,
-    onSyncFail?: (originalState: AppState) => AppState
-  ) => {
-    return async (...args: T[]) => {
-      let originalState: AppState | null = null;
-      setState(prevState => {
-        originalState = prevState;
-        return stateModifier(prevState, ...args);
-      });
-
-      setSyncState('syncing');
-      try {
-        await apiCall(...args);
-        setSyncState('synced');
-      } catch (error) {
-        console.error(`Sync failed for ${apiCall.name}:`, error);
-        setSyncState('error');
-        alert("A sincronização falhou. Suas alterações foram salvas localmente, mas a operação foi revertida para manter a consistência com o servidor.");
-        
-        if (originalState) {
-          const finalState = onSyncFail ? onSyncFail(originalState) : originalState;
-          setState(finalState);
-        } else {
-          await forceSync();
+ const createUpdater = <T extends any[]>(apiCall: (...args: T) => Promise<any>) => {
+    return async (...args: T) => {
+        setSyncState('syncing');
+        try {
+            await apiCall(...args);
+            const freshState = api.apiGetState();
+            setState(freshState);
+            setSyncState('synced');
+        } catch (error) {
+            console.error(`Local DB operation failed:`, error);
+            setSyncState('error');
+            alert(`Ocorreu um erro ao salvar os dados: ${error instanceof Error ? error.message : String(error)}`);
+            const freshState = api.apiGetState();
+            setState(freshState);
         }
-      }
     };
   };
 
-  const addOrUpdateService = createOptimisticUpdater(api.apiAddOrUpdateService, (prevState, service: Service) => {
-    const services = [...prevState.services];
-    const index = services.findIndex(s => s.id === service.id);
-    if (index > -1) services[index] = service;
-    else services.push(service);
-    return { ...prevState, services };
-  });
-
-  const deleteService = createOptimisticUpdater(api.apiDeleteService, (prevState, serviceId: string) => ({
-      ...prevState,
-      services: prevState.services.filter(s => s.id !== serviceId),
-  }));
-
-  const addOrUpdatePromotion = createOptimisticUpdater(api.apiAddOrUpdatePromotion, (prevState, promotion: Promotion) => {
-      const promotions = [...prevState.promotions];
-      const index = promotions.findIndex(p => p.id === promotion.id);
-      if (index > -1) promotions[index] = promotion;
-      else promotions.push(promotion);
-      return { ...prevState, promotions };
-  });
-
-  const deletePromotion = createOptimisticUpdater(api.apiDeletePromotion, (prevState, promotionId: string) => ({
-      ...prevState,
-      promotions: prevState.promotions.filter(p => p.id !== promotionId),
-  }));
+  const addOrUpdateService = createUpdater(api.apiAddOrUpdateService);
+  const deleteService = createUpdater(api.apiDeleteService);
+  const addOrUpdatePromotion = createUpdater(api.apiAddOrUpdatePromotion);
+  const deletePromotion = createUpdater(api.apiDeletePromotion);
+  const createAppointment = createUpdater(api.apiCreateAppointment);
+  const updateAppointmentStatus = createUpdater(api.apiUpdateAppointmentStatus);
+  const updateClientNotes = createUpdater(api.apiUpdateClientNotes);
+  const updateBrandingSettings = createUpdater(api.apiUpdateBrandingSettings);
+  const updatePixSettings = createUpdater(api.apiUpdatePixSettings);
+  const updateMaintenanceMode = createUpdater(api.apiUpdateMaintenanceMode);
   
-  const createAppointment = createOptimisticUpdater(api.apiCreateAppointment, (prevState, appointment: Appointment) => ({
-      ...prevState,
-      appointments: [...prevState.appointments, appointment],
-  }));
-
-  const updateAppointmentStatus = createOptimisticUpdater(api.apiUpdateAppointmentStatus, (prevState, appointmentId: string, status: AppointmentStatus, paymentConfirmed?: boolean) => {
-      const appointments = prevState.appointments.map(a => {
-          if (a.id === appointmentId) {
-              return { ...a, status, paymentConfirmed: paymentConfirmed !== undefined ? paymentConfirmed : a.paymentConfirmed };
-          }
-          return a;
-      });
-      return { ...prevState, appointments };
-  });
-
-  const updateClientNotes = createOptimisticUpdater(api.apiUpdateClientNotes, (prevState, clientId: string, notes: string) => ({
-      ...prevState,
-      clients: prevState.clients.map(c => c.id === clientId ? { ...c, notes } : c),
-  }));
-
-  const updateBrandingSettings = createOptimisticUpdater(api.apiUpdateBrandingSettings, (prevState, branding: BrandingSettings) => ({
-      ...prevState,
-      settings: { ...prevState.settings, branding },
-  }));
-
-  const updatePixSettings = createOptimisticUpdater(api.apiUpdatePixSettings, (prevState, pix: AppSettings['pixCredentials']) => ({
-      ...prevState,
-      settings: { ...prevState.settings, pixCredentials: pix },
-  }));
-
-  const updateMaintenanceMode = createOptimisticUpdater(api.apiUpdateMaintenanceMode, (prevState, maintenance: AppSettings['maintenanceMode']) => ({
-      ...prevState,
-      settings: { ...prevState.settings, maintenanceMode: maintenance },
-  }));
-
   const resetClientPassword = useCallback(async (clientId: string) => {
       setSyncState('syncing');
       try {
           const newPassword = await api.apiResetClientPassword(clientId);
-          await forceSync();
+          forceSync();
           return newPassword;
       } catch (error) {
           console.error("Password reset failed:", error);
@@ -483,7 +381,7 @@ export default function App() {
     setSyncState('syncing');
     try {
         await api.apiDangerouslyReplaceState(newState);
-        await forceSync();
+        forceSync();
     } catch (error) {
         console.error("Data replacement failed:", error);
         setSyncState('error');
@@ -498,11 +396,7 @@ export default function App() {
       updateBrandingSettings, updatePixSettings, updateMaintenanceMode,
       dangerouslyReplaceState,
       syncState, forceSync
-  }), [state, currentUser, login, logout, register, resetPassword, isAdminView,
-      addOrUpdateService, deleteService, addOrUpdatePromotion, deletePromotion,
-      createAppointment, updateAppointmentStatus, updateClientNotes, resetClientPassword,
-      updateBrandingSettings, updatePixSettings, updateMaintenanceMode,
-      dangerouslyReplaceState, syncState, forceSync]);
+  }), [state, currentUser, login, logout, register, resetPassword, isAdminView, forceSync]);
   
   if (isLoading || isAuthLoading) return <LoadingSpinner />;
 
